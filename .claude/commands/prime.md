@@ -1,33 +1,15 @@
-Bootstrap a fresh instance by reading project context files and understanding the current state.
+Bootstrap a fresh instance - LIGHTWEIGHT MODE (minimal context usage).
 
-## 1. Scan the Repo Structure
-List top-level dirs/files to get bearings:
-- `README.md`
-- `Context/` (all files)
-- `Data Crawling/` (especially `output/` and scripts)
+## 1. Read Essential Sections Only
+- `Context/claude.md` lines 1-75 (Quick Status + Key Context sections)
+- `Context/WORKSPACE_NOTES.md` lines 260-316 (Next Actions section)
 
-## 2. Read Core Context Files
-- `README.md` – high-level description of DeepSeek-Coder-VL and goals
-- `Context/WORKSPACE_NOTES.md` – most recent progress, phases, and "Next Actions"
-- `Context/PHASE2_PLAN.md` – Phase 2 objectives, training strategy, and gates
-- `Context/claude.md` – "Quick Status" and "Next Steps" (the latest snapshot)
+## 2. Quick File Check (no full reads)
+```bash
+ls models/vision_encoder.pt 2>/dev/null && echo "✓ Vision encoder ready" || echo "✗ Vision encoder missing"
+ls -d coder_vl/ 2>/dev/null && echo "✓ Implementation exists" || echo "✗ Implementation missing"
+ls Data\ Crawling/output/manifests/*.jsonl 2>/dev/null | wc -l | xargs -I{} echo "✓ {} manifest files"
+```
 
-## 3. Check Data + Scripts
-Verify presence of:
-- `Data Crawling/simple_data_gen.py`
-- `Data Crawling/simple_data_gen.sh`
-- `Data Crawling/output/manifests/{train,val,test}.jsonl`
-
-Optionally peek at a few manifest lines to understand data schema.
-
-## 4. Check Git State (Optional)
-If git is available:
-- Run `git status` to see uncommitted changes
-- Run `git log --oneline -10` to see recent commits for extra context
-
-## 5. Produce a Concise Prime Summary
-After reading all the context, return the statement:
-
-**"Ready to Roll!"**
-
-**Goal:** A brand new Claude instance should be able to meaningfully answer: "What is this project, what just happened, and what should we do next?"
+## 3. Output (Brief)
+Just say: **"Ready."** + current phase + immediate next step (max 2 lines total)
