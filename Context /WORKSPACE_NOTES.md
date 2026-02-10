@@ -1,6 +1,6 @@
 # DeepSeek-Coder-VL Workspace Notes
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-10*
 
 ## Phase 1: Validation Complete ✅
 
@@ -142,7 +142,7 @@ Extremely lightweight compared to:
 
 ---
 
-## Phase 2: Prototype the Bridge (Ready to Start)
+## Phase 2: Prototype the Bridge (Implementation in Progress)
 
 ### Goal
 Build and train the projection adapter that maps VL2 vision tokens → Coder-V2 embedding space.
@@ -153,9 +153,17 @@ Build and train the projection adapter that maps VL2 vision tokens → Coder-V2 
 - [x] Load DeepSeek-Coder-V2-Lite config
 - [x] Inspect coder model embedding dimensions → **2048D confirmed**
 - [x] Design the MLP projector architecture → **1280D → 4096D → 2048D (13.6M params)**
-- [ ] Generate training data (~60K examples total)
-- [ ] Implement the projection adapter module
-- [ ] Train projector (Phase 2a: alignment, Phase 2b: instruction tuning)
+- [x] Generate Phase 2a MVP training data (~11K examples total; 10,119 train / 562 val / 563 test) using `Data Crawling/simple_data_gen.sh` → manifests in `Data Crawling/output/manifests`
+- [x] **Implement the projection adapter module** → `coder_vl/projector.py` (13.6M params, tested ✓)
+- [x] **Implement model integration with token replacement** → `coder_vl/model.py` (LLaVA-style <image> → 1120 visual tokens)
+- [x] **Implement Phase 2a training script** → `coder_vl/train_projector.py` (adapter-only training, frozen vision encoder + coder)
+- [x] **Create SLURM job scripts** → `coder_vl/train_phase2a.sh` (dgxh100, 1× H100)
+- [x] **Create vision encoder extraction script** → `coder_vl/extract_encoder.py` (extracts SAM + Qwen2Decoder2Encoder + MlpProjector from DeepSeek-OCR-2)
+- [ ] **Extract vision encoder** → Run `coder_vl/extract_encoder.sh` to save standalone vision encoder (~1.5-2 GB) to `/data/gloriosog/models/vision_encoder.pt` (in progress)
+- [ ] Scale training data to 50K–100K examples on `/data` using the advanced pipeline (`ADVANCED_DATA_PIPELINE.md`)
+- [ ] Train projector Phase 2a (alignment pretraining)
+- [ ] Evaluate against Phase 2a gates (Section 8 in PHASE2_PLAN.md)
+- [ ] Train projector Phase 2b (instruction tuning with LoRA)
 
 ### Compute Requirements
 - 2× H100 GPUs
@@ -252,29 +260,32 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-09):** Embedding dimension inspection
-   - ✅ Vision encoder dimension confirmed: 1280D
-   - ✅ Coder dimension confirmed: 2048D
-   - ✅ Projection adapter architecture designed
+1. **✅ COMPLETED (2026-02-10):** Phase 2 implementation
+   - ✅ Created `coder_vl/projector.py` — 13.6M parameter MLP (1280D→4096D→2048D), tested and verified
+   - ✅ Created `coder_vl/model.py` — LLaVA-style token integration (<image> → 1120 visual tokens)
+   - ✅ Created `coder_vl/train_projector.py` — Phase 2a training script (adapter-only, frozen encoder + coder)
+   - ✅ Created `coder_vl/train_phase2a.sh` — SLURM job for dgxh100 (1× H100, 24h walltime)
+   - ✅ Created `coder_vl/extract_encoder.py` — Vision encoder extraction from DeepSeek-OCR-2
+   - ✅ Fixed extraction script with correct attribute names (model.sam_model, model.qwen2_model, model.projector)
+   - ✅ Created `/pass` and `/prime` slash commands in `.claude/commands/`
 
-2. **Immediate (Next):** Implement projection adapter module + vision encoder extraction
-   - Create `coder_vl/extract_encoder.py` — extract vision pipeline from DeepSeek-OCR-2
-   - Create `coder_vl/projector.py` with the 13.6M parameter MLP (1280D→4096D→2048D)
-   - Create `coder_vl/model.py` — combined model with token integration
-   - Test that it correctly maps 1280D → 2048D tensors
-   - Verify gradient flow through the adapter
+2. **✅ COMPLETED (2026-02-10):** Vision encoder extraction
+   - ✅ Fixed `/data` permission issues → all paths updated to project root (`./models/`, `./checkpoints/`)
+   - ✅ Extracted vision encoder: `./models/vision_encoder.pt` (0.85 GB, fp16, 454M params)
+   - ✅ Optimized `/prime` and `/pass` commands (~70-80% token reduction)
 
-3. **Short-term:** Generate training data (updated 2026-02-09)
-   - Collect Python files from top 50–100 GitHub repos (50–2500 lines, ~10K–20K files)
-   - Convert to images with `code_to_image.py` (no line numbers, consistent with Phase 1)
-   - Phase 2a: Generate 50K–100K examples via AST parsing (free, automated)
-   - Phase 2b: Generate 50K instruction examples (teacher model or self-distillation)
+3. **Immediate (Next):** Run Phase 2a training
+   - Submit training job: `sbatch coder_vl/train_phase2a.sh`
+   - Monitor progress: `tail -f slurm-phase2a-*.out` (~6-10 hours on 1× H100)
+   - Checkpoints saved to `/data/gloriosog/checkpoints/phase2a/`
+   - Evaluate against Phase 2a gates (PHASE2_PLAN.md Section 8)
 
-3. **Medium-term:** Train projection adapter
-   - Phase 2a: Alignment pre-training (50K–100K examples, ~6–10 hours on H100)
-   - Phase 2b: Instruction fine-tuning (50K examples, ~12–18 hours on H100)
+4. **Medium-term:** Scale data and Phase 2b
+   - Scale training data to 50K–100K examples using advanced pipeline
+   - If Phase 2a gates pass → proceed to Phase 2b (adapter + LoRA)
+   - Phase 2b: Instruction fine-tuning (~12–18 hours on H100)
 
-4. **Future:** Evaluate Sniper method in Phase 4
+5. **Future:** Evaluate Sniper method in Phase 4
    - Compare direct vision-to-patch vs hybrid approach
    - Measure accuracy vs latency trade-offs
 

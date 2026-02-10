@@ -12,8 +12,9 @@
 
 ```bash
 # Create repos directory (using /scratch/ - no approval needed)
-mkdir -p /scratch/$USER/coder_vl_data/repos
-cd /scratch/$USER/coder_vl_data/repos
+# User: gloriosog (filesystem username)
+mkdir -p /scratch/gloriosog/coder_vl_data/repos
+cd /scratch/gloriosog/coder_vl_data/repos
 
 # Clone 15-20 top Python repos (shallow clones)
 git clone --depth 1 https://github.com/django/django
@@ -60,7 +61,7 @@ The script will:
 5. Render each as a PNG image (monokai style, no line numbers)
 6. Generate 3-5 AST-based Q&A labels per file
 7. Split 90/5/5 train/val/test
-8. Write manifests to `/scratch/$USER/coder_vl_data/manifests/`
+8. Write manifests to `/scratch/gloriosog/coder_vl_data/manifests/`
 
 ---
 
@@ -68,7 +69,7 @@ The script will:
 
 ```bash
 # Check structure
-ls -lh /scratch/$USER/coder_vl_data/
+ls -lh /scratch/gloriosog/coder_vl_data/
 
 # Should see:
 #   repos/        (~2-4 GB)
@@ -76,7 +77,7 @@ ls -lh /scratch/$USER/coder_vl_data/
 #   manifests/    (train.jsonl, val.jsonl, test.jsonl)
 
 # Count examples
-wc -l /scratch/$USER/coder_vl_data/manifests/*.jsonl
+wc -l /scratch/gloriosog/coder_vl_data/manifests/*.jsonl
 
 # Expected output:
 #   ~9,000 train.jsonl
@@ -84,11 +85,11 @@ wc -l /scratch/$USER/coder_vl_data/manifests/*.jsonl
 #   ~500   test.jsonl
 
 # Spot-check a manifest entry
-head -n 1 /scratch/$USER/coder_vl_data/manifests/train.jsonl | python -m json.tool
+head -n 1 /scratch/gloriosog/coder_vl_data/manifests/train.jsonl | python -m json.tool
 
 # Open a random image to verify rendering
 # (Copy one to local machine or view on Rosie with image viewer)
-ls /scratch/$USER/coder_vl_data/images/ | head -n 5
+ls /scratch/gloriosog/coder_vl_data/images/ | head -n 5
 ```
 
 ---
@@ -100,7 +101,7 @@ ls /scratch/$USER/coder_vl_data/images/ | head -n 5
 ```json
 {
   "id": "django__query__function_listing",
-  "image": "/scratch/$USER/coder_vl_data/images/django__django.db.models.query.py.png",
+  "image": "/scratch/gloriosog/coder_vl_data/images/django__django.db.models.query.py.png",
   "repo": "django",
   "source_file": "django/db/models/query.py",
   "line_count": 1462,
@@ -131,7 +132,7 @@ ls /scratch/$USER/coder_vl_data/images/ | head -n 5
 
 ### "Repos directory not found"
 
-Clone repos first (see step 1 above). The script checks for `/scratch/$USER/coder_vl_data/repos/` and exits if missing.
+Clone repos first (see step 1 above). The script checks for `/scratch/gloriosog/coder_vl_data/repos/` and exits if missing.
 
 ### "Only got 3,000 examples, not 10,000"
 
@@ -176,7 +177,7 @@ Once you get `/data/` access, migrate your data:
 
 ```bash
 # Simple move
-mv /scratch/$USER/coder_vl_data /data/coder_vl_data
+mv /scratch/gloriosog/coder_vl_data /data/coder_vl_data
 
 # Update simple_data_gen.sh:
 # Change REPOS_DIR and OUTPUT_DIR to /data/coder_vl_data paths
@@ -195,7 +196,7 @@ mv /scratch/$USER/coder_vl_data /data/coder_vl_data
 
 ## Next Steps After Data Generation
 
-1. **Backup manifests to home:** `cp -r /scratch/$USER/coder_vl_data/manifests $HOME/backup/`
+1. **Backup manifests to home:** `cp -r /scratch/gloriosog/coder_vl_data/manifests $HOME/backup/`
 2. **Spot-check quality:** Open 10 random images, verify they're readable code with syntax highlighting
 3. **Verify labels:** Check that AST-extracted answers match the source files
 4. **Start Phase 2a training:** Use the manifests with your adapter training script
@@ -222,7 +223,7 @@ The lean pipeline is **good enough for validation**. Don't overengineer until yo
 | Disk (repos) | ~2-4 GB | Shallow clones, 15-20 repos |
 | Disk (images) | ~2-3 GB | 2,000-3,000 PNGs @ ~1 MB each |
 | Disk (manifests) | <10 MB | JSONL text files |
-| **Total disk** | **~5-7 GB** | All on `/scratch/$USER/` |
+| **Total disk** | **~5-7 GB** | All on `/scratch/gloriosog/` |
 | Compute time | ~2-4 hours | 16 CPUs, `teaching` partition |
 | Walltime | <6 hours | Includes buffer for slow I/O |
 

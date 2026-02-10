@@ -624,3 +624,17 @@ These are non-blocking but should be resolved before Phase 2b:
 - 2026-02-09: **Major revision.** Added Rosie infrastructure specs (Section 2), token integration strategy (Section 3), concrete training hyperparameters (Section 5), memory budget tables (Section 6), quantitative pass/fail gates (Section 8), adapter ablation matrix (Section 9), LoRA design rationale (Section 12), and implementation order (Section 14). Resolved all cross-document inconsistencies. Removed vague language from gates. Confirmed V100 is not viable; H100 required.
 - 2026-02-09: Created Phase 2 runbook for cross-instance continuity, added Rosie policy snapshot, and standardized experiment tracking format.
 - 2026-02-09: **Data & encoder revision.** Scaled Phase 2a alignment from 10K→50K–100K examples using AST-based label generation (no API needed). Added vision encoder extraction step (extract from full DeepSeek-OCR-2, discard language decoder, ~2 GB vs ~26 GB). Fixed line numbers to "No" with rationale (Section 7.5). Expanded file size distribution to include large files (500–2500 lines). Updated memory budgets and training time estimates accordingly.
+ - 2026-02-10: **Phase 2a MVP data generated.** Implemented lean data pipeline (`Data Crawling/simple_data_gen.py` + `simple_data_gen.sh`) that:
+   - Samples 2,500 Python files from 15 top repos
+   - Renders 2,500 code images (monokai, no line numbers) in `Data Crawling/output/images/`
+   - Generates 11,244 AST-based Q&A examples (10,119 train / 562 val / 563 test) with manifests in `Data Crawling/output/manifests/`
+   - Serves as Phase 2a alignment dataset; advanced `/data`-backed pipeline (`ADVANCED_DATA_PIPELINE.md`) reserved for scaling to 50K–100K examples in Phase 2b.
+ - 2026-02-10: **Phase 2a implementation complete.** Built full training infrastructure for adapter alignment:
+   - Implemented projection adapter (`coder_vl/projector.py`) — 2-layer MLP (1280D→4096D→2048D, 13.6M params), tested and verified with dummy inputs
+   - Implemented CoderVL model integration (`coder_vl/model.py`) — LLaVA-style token replacement, handles <image> placeholder → 1120 visual tokens splicing
+   - Implemented Phase 2a training script (`coder_vl/train_projector.py`) — adapter-only training with frozen vision encoder + coder, AdamW optimizer (LR=1e-3), cosine schedule, gradient checkpointing, wandb logging, checkpointing every 30 min
+   - Created SLURM job script (`coder_vl/train_phase2a.sh`) — targets dgxh100 partition (1× H100, 24h walltime)
+   - Created vision encoder extraction script (`coder_vl/extract_encoder.py`) — extracts SAM + Qwen2Decoder2Encoder + MlpProjector from DeepSeek-OCR-2, discards language decoder, saves standalone module (~1.5-2 GB vs ~26 GB full model)
+   - Fixed extraction with correct DeepSeek-OCR-2 attribute paths (model.sam_model, model.qwen2_model, model.projector)
+   - Created project-specific slash commands (`.claude/commands/pass.md`, `.claude/commands/prime.md`) for session handoff and context bootstrapping
+   - Ready to run: vision encoder extraction in progress, Phase 2a training script ready for H100

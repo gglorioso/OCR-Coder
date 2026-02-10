@@ -7,22 +7,33 @@
 
 ## Quick Status
 
-**Current Phase:** 2 - Building the Projection Adapter
-**Last Updated:** 2026-02-09
+**Current Phase:** 2a - Vision Encoder Extracted, Ready for Training
+**Last Updated:** 2026-02-10 (late afternoon)
 
 - ✅ **Phase 1 Complete:** Vision encoder compression validated (10-20x for large files)
 - ✅ **Phase 1.5 Complete:** Embedding dimensions confirmed
   - Vision encoder: **1280D** (from Phase 1 testing)
   - Coder model: **2048D** (from config inspection)
   - Projection adapter: **13.6M parameters** (1280D → 4096D → 2048D)
+- ✅ **Phase 2a Data (MVP) Complete:** ~11K code-image Q&A examples generated
+  - 2,500 rendered code images (monokai, no line numbers)
+  - 11,244 examples total → **10,119 train / 562 val / 563 test**
+  - Manifests in `Data Crawling/output/manifests/{train,val,test}.jsonl`
+- ✅ **Phase 2a Implementation Complete:** Full training infrastructure built
+  - `coder_vl/projector.py` — Projection adapter (tested ✓)
+  - `coder_vl/model.py` — Token integration (<image> → 1120 visual tokens)
+  - `coder_vl/train_projector.py` — Training script (adapter-only, frozen models)
+  - `coder_vl/train_phase2a.sh` — SLURM job for dgxh100
+  - `coder_vl/extract_encoder.py` — Vision encoder extraction (in progress)
 
 **Next Steps:**
-1. Pre-cache model weights on `/data` and verify `dgxh100` access
-2. Confirm MLA module names for LoRA targeting (run param inspection)
-3. Implement projection adapter module (`coder_vl/projector.py`) + token integration (`coder_vl/model.py`)
-4. Generate training data: Phase 2a (~10K captioning) + Phase 2b (~50K instruction)
-5. Train Phase 2a on `dgxh100` (1× H100, ~2–4 hours)
-6. Validate against quantitative gates before starting Phase 2b
+1. Submit Phase 2a training: `sbatch coder_vl/train_phase2a.sh` (dgxh100, 1× H100, ~6-10 hours)
+2. Monitor training: `tail -f slurm-phase2a-*.out`
+   - Submit: `sbatch coder_vl/train_phase2a.sh`
+   - Monitor: `tail -f slurm-phase2a-*.out`
+3. Evaluate against Phase 2a gates (Section 8 in `PHASE2_PLAN.md`)
+4. If gates pass → proceed to Phase 2b (adapter + LoRA)
+5. If gates fail → debug, try architecture ablations (E04-E06)
 
 ---
 
@@ -75,9 +86,11 @@ Code Image → SigLIP Vision Encoder (1280D) → Projection Adapter (1280D→204
 ## Code Conventions & Patterns
 
 ### Rosie Supercomputer (SLURM)
+- **User account:** `gloriosog` (filesystem username - use this for `/scratch/` and `/data/` paths, not the full email)
 - **Python path:** Use `$HOME/DS OCR/envs/deepseek-ocr/bin/python` (not `conda activate`)
 - **Partitions:** `teaching` (T4, 16GB), `dgx` (V100, 32GB), `dgxh100` (H100, 80GB)
 - **Phase 2 uses `dgxh100` exclusively** — V100 cannot hold both models simultaneously
+- **Storage:** Use `/scratch/gloriosog/` for data (no approval needed, large quota)
 - **Job scripts:** Use `.sh` files with `sbatch` command
 - **Max walltime:** 24 hours; use checkpoint + job chaining for longer runs
 - **Output files:** `slurm-{jobid}.out` and `slurm-{jobid}.err`
