@@ -1,0 +1,40 @@
+##############################
+# Generated data & artifacts #
+##############################
+
+# Scraped third-party repositories (not part of this repo's source)
+Scraped Repos/
+
+# Data Crawling outputs (images, manifests, logs)
+Data Crawling/output/
+
+# Checkpoints & local model weights (if stored inside repo)
+checkpoints/
+models/
+
+####################
+# SLURM job output #
+####################
+
+slurm-*.out
+slurm-*.err
+
+########################
+# Python build artifacts
+########################
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+#################
+# Editor/IDE cruft
+#################
+
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+
