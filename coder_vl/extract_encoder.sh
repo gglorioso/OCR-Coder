@@ -6,6 +6,8 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=slurm-extract-encoder-%j.out
 #SBATCH --error=slurm-extract-encoder-%j.err
+#SBATCH --mail-user=gloriosog@msoe.edu
+#SBATCH --mail-type=END,FAIL
 
 # Extract Vision Encoder from DeepSeek-OCR-2
 # Needs ~13-16 GB VRAM (fp16), so V100 32GB is sufficient

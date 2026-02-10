@@ -6,6 +6,8 @@
 #SBATCH --time=24:00:00
 #SBATCH --output=slurm-phase2a-%j.out
 #SBATCH --error=slurm-phase2a-%j.err
+#SBATCH --mail-user=gloriosog@msoe.edu
+#SBATCH --mail-type=END,FAIL
 
 # Phase 2a Training - Projection Adapter Alignment
 # Trains adapter only (13.6M params), vision encoder + coder model frozen
