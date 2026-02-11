@@ -31,7 +31,7 @@ class CoderVLModel(nn.Module):
     def __init__(
         self,
         vision_encoder_path: str,
-        coder_model_path: str = "deepseek-ai/deepseek-coder-6.7b-instruct",
+        coder_model_path: str = "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
         adapter_hidden_dim: int = 4096,
         freeze_vision: bool = True,
         freeze_coder: bool = True,

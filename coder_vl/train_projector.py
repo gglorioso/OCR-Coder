@@ -19,7 +19,10 @@ from PIL import Image
 
 import torch
 import torch.nn as nn
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.distributed import DistributedSampler
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import get_cosine_schedule_with_warmup
@@ -40,7 +43,7 @@ class TrainingConfig:
 
     # Model paths
     vision_encoder_path: str = "./models/vision_encoder.pt"
-    coder_model_path: str = "deepseek-ai/deepseek-coder-6.7b-instruct"
+    coder_model_path: str = "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
 
     # Training hyperparameters (Phase 2a - from PHASE2_PLAN.md Section 5)
     batch_size_per_gpu: int = 8
@@ -68,6 +71,11 @@ class TrainingConfig:
 
     # Device
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Distributed training
+    distributed: bool = False  # Auto-set in main() if multiple GPUs
+    local_rank: int = -1       # Set via environment variable
+    world_size: int = 1        # Total number of processes
 
 
 class CodeVLDataset(Dataset):
@@ -189,9 +197,10 @@ class Trainer:
 
     def __init__(self, config: TrainingConfig):
         self.config = config
+        self.is_main_process = not config.distributed or config.local_rank == 0
 
-        # Initialize wandb
-        if config.wandb_project:
+        # Initialize wandb (only on main process)
+        if config.wandb_project and self.is_main_process:
             wandb.init(
                 project=config.wandb_project,
                 name=config.wandb_run_name,
@@ -218,9 +227,21 @@ class Trainer:
         # Move to device
         self.model = self.model.to(config.device)
 
+        # Wrap with DDP if distributed
+        if config.distributed:
+            self.model = DDP(
+                self.model,
+                device_ids=[config.local_rank],
+                output_device=config.local_rank,
+                find_unused_parameters=False,  # All adapter params are used
+            )
+            print(f"Model wrapped with DDP (rank {config.local_rank}/{config.world_size}) ✓")
+
         # Enable gradient checkpointing if requested
         if config.gradient_checkpointing:
-            self.model.coder_model.gradient_checkpointing_enable()
+            # Access underlying model if wrapped with DDP
+            model_to_checkpoint = self.model.module if config.distributed else self.model
+            model_to_checkpoint.coder_model.gradient_checkpointing_enable()
             print("Gradient checkpointing enabled ✓")
 
         # Setup precision
@@ -250,11 +271,26 @@ class Trainer:
             max_seq_length=config.max_seq_length,
         )
 
-        # Create dataloaders
+        # Create dataloaders with optional distributed sampler
+        train_sampler = DistributedSampler(
+            self.train_dataset,
+            num_replicas=config.world_size,
+            rank=config.local_rank,
+            shuffle=True,
+        ) if config.distributed else None
+
+        val_sampler = DistributedSampler(
+            self.val_dataset,
+            num_replicas=config.world_size,
+            rank=config.local_rank,
+            shuffle=False,
+        ) if config.distributed else None
+
         self.train_loader = DataLoader(
             self.train_dataset,
             batch_size=config.batch_size_per_gpu,
-            shuffle=True,
+            sampler=train_sampler,
+            shuffle=(train_sampler is None),  # Only shuffle if not using sampler
             num_workers=4,
             pin_memory=True,
         )
@@ -262,14 +298,18 @@ class Trainer:
         self.val_loader = DataLoader(
             self.val_dataset,
             batch_size=config.batch_size_per_gpu,
+            sampler=val_sampler,
             shuffle=False,
             num_workers=4,
             pin_memory=True,
         )
 
-        # Setup optimizer
+        self.train_sampler = train_sampler  # Save for epoch shuffling
+
+        # Setup optimizer (handle DDP wrapper)
+        model_unwrapped = self.model.module if config.distributed else self.model
         self.optimizer = AdamW(
-            self.model.adapter.parameters(),  # Only adapter is trainable
+            model_unwrapped.adapter.parameters(),  # Only adapter is trainable
             lr=config.learning_rate,
             weight_decay=config.weight_decay,
         )
@@ -286,7 +326,8 @@ class Trainer:
 
         print(f"\nTraining steps: {num_training_steps:,}")
         print(f"Warmup steps: {num_warmup_steps:,}")
-        print(f"Effective batch size: {config.batch_size_per_gpu * config.gradient_accumulation_steps}")
+        effective_batch = config.batch_size_per_gpu * config.gradient_accumulation_steps * config.world_size
+        print(f"Effective batch size: {effective_batch} (per_gpu={config.batch_size_per_gpu}, accum={config.gradient_accumulation_steps}, gpus={config.world_size})")
 
         # Training state
         self.global_step = 0
@@ -319,12 +360,21 @@ class Trainer:
 
     def train_epoch(self):
         """Train for one epoch."""
+        # Set epoch for distributed sampler (ensures proper shuffling)
+        if self.config.distributed and self.train_sampler is not None:
+            self.train_sampler.set_epoch(self.current_epoch)
+
         self.model.train()
 
         total_loss = 0
         num_batches = 0
 
-        progress_bar = tqdm(self.train_loader, desc="Training")
+        # Only show progress bar on main process
+        progress_bar = tqdm(
+            self.train_loader,
+            desc="Training",
+            disable=not self.is_main_process
+        )
 
         for batch_idx, batch in enumerate(progress_bar):
             # Move to device
@@ -347,8 +397,9 @@ class Trainer:
 
             # Optimizer step every gradient_accumulation_steps
             if (batch_idx + 1) % self.config.gradient_accumulation_steps == 0:
-                # Clip gradients
-                torch.nn.utils.clip_grad_norm_(self.model.adapter.parameters(), max_norm=1.0)
+                # Clip gradients (handle DDP wrapper)
+                model_unwrapped = self.model.module if self.config.distributed else self.model
+                torch.nn.utils.clip_grad_norm_(model_unwrapped.adapter.parameters(), max_norm=1.0)
 
                 # Update weights
                 self.optimizer.step()
@@ -357,8 +408,8 @@ class Trainer:
 
                 self.global_step += 1
 
-                # Log metrics
-                if self.global_step % self.config.log_steps == 0:
+                # Log metrics (only on main process)
+                if self.is_main_process and self.global_step % self.config.log_steps == 0:
                     lr = self.scheduler.get_last_lr()[0]
                     wandb.log({
                         "train/loss": loss.item() * self.config.gradient_accumulation_steps,
@@ -367,8 +418,8 @@ class Trainer:
                         "train/step": self.global_step,
                     })
 
-                # Evaluate
-                if self.global_step % self.config.eval_steps == 0:
+                # Evaluate (only on main process to avoid duplicate validation)
+                if self.is_main_process and self.global_step % self.config.eval_steps == 0:
                     val_loss = self.evaluate()
                     print(f"\nStep {self.global_step} - Val loss: {val_loss:.4f}")
                     self.model.train()  # Back to training mode
@@ -388,7 +439,7 @@ class Trainer:
         total_loss = 0
         num_batches = 0
 
-        for batch in tqdm(self.val_loader, desc="Evaluating"):
+        for batch in tqdm(self.val_loader, desc="Evaluating", disable=not self.is_main_process):
             input_ids = batch["input_ids"].to(self.config.device)
             labels = batch["labels"].to(self.config.device)
             images = batch["images"].to(self.config.device)
@@ -405,22 +456,29 @@ class Trainer:
 
         avg_loss = total_loss / num_batches
 
-        # Log to wandb
-        wandb.log({
-            "val/loss": avg_loss,
-            "val/step": self.global_step,
-        })
+        # Log to wandb (only on main process)
+        if self.is_main_process:
+            wandb.log({
+                "val/loss": avg_loss,
+                "val/step": self.global_step,
+            })
 
         return avg_loss
 
     def save_checkpoint(self, name: str = "checkpoint"):
-        """Save model checkpoint."""
+        """Save model checkpoint (only on main process)."""
+        if not self.is_main_process:
+            return  # Only save on rank 0
+
         checkpoint_path = os.path.join(self.config.checkpoint_dir, f"{name}_step{self.global_step}.pt")
+
+        # Unwrap DDP if needed
+        model_unwrapped = self.model.module if self.config.distributed else self.model
 
         checkpoint = {
             "global_step": self.global_step,
             "epoch": self.current_epoch,
-            "adapter_state_dict": self.model.adapter.state_dict(),
+            "adapter_state_dict": model_unwrapped.adapter.state_dict(),
             "optimizer_state_dict": self.optimizer.state_dict(),
             "scheduler_state_dict": self.scheduler.state_dict(),
             "config": vars(self.config),
@@ -450,6 +508,49 @@ class Trainer:
             print(f"Removed old checkpoint: {oldest}")
 
 
+def setup_distributed():
+    """Initialize distributed training from SLURM environment."""
+    # Check if running in SLURM with multiple tasks
+    if "SLURM_PROCID" in os.environ:
+        # SLURM environment
+        rank = int(os.environ["SLURM_PROCID"])
+        world_size = int(os.environ["SLURM_NTASKS"])
+        local_rank = int(os.environ["SLURM_LOCALID"])
+
+        # Initialize process group
+        dist.init_process_group(
+            backend="nccl",
+            init_method="env://",
+            world_size=world_size,
+            rank=rank,
+        )
+
+        # Set device
+        torch.cuda.set_device(local_rank)
+
+        return True, local_rank, world_size
+
+    # Check for torchrun/torch.distributed.launch
+    elif "LOCAL_RANK" in os.environ:
+        local_rank = int(os.environ["LOCAL_RANK"])
+        world_size = int(os.environ["WORLD_SIZE"])
+        rank = int(os.environ["RANK"])
+
+        dist.init_process_group(backend="nccl")
+        torch.cuda.set_device(local_rank)
+
+        return True, local_rank, world_size
+
+    # Single GPU training
+    return False, -1, 1
+
+
+def cleanup_distributed():
+    """Cleanup distributed training."""
+    if dist.is_initialized():
+        dist.destroy_process_group()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Phase 2a Training - Adapter Alignment")
 
@@ -463,8 +564,17 @@ def main():
 
     args = parser.parse_args()
 
+    # Setup distributed training if applicable
+    distributed, local_rank, world_size = setup_distributed()
+
+    if distributed:
+        print(f"Distributed training initialized: rank {local_rank}/{world_size}")
+
     # Load config
     config = TrainingConfig()
+    config.distributed = distributed
+    config.local_rank = local_rank
+    config.world_size = world_size
 
     # Override with command line args
     if args.batch_size:
@@ -474,11 +584,15 @@ def main():
     if args.checkpoint_dir:
         config.checkpoint_dir = args.checkpoint_dir
 
-    # Initialize trainer
-    trainer = Trainer(config)
+    try:
+        # Initialize trainer
+        trainer = Trainer(config)
 
-    # Start training
-    trainer.train()
+        # Start training
+        trainer.train()
+    finally:
+        # Cleanup distributed training
+        cleanup_distributed()
 
 
 if __name__ == "__main__":
