@@ -25,10 +25,9 @@ echo ""
 # Python environment
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 
-# Directories (using /scratch/ - no approval needed, large quota)
-# When /data/ access is approved, change to: /data/coder_vl_data
-REPOS_DIR="/scratch/$USER/coder_vl_data/repos"
-OUTPUT_DIR="/scratch/$USER/coder_vl_data"
+# Directories (using home directory - repos in "Scraped Repos" folder)
+REPOS_DIR="$HOME/CoderOCR/OCR-Coder/Scraped Repos"
+OUTPUT_DIR="$HOME/CoderOCR/OCR-Coder/Data Crawling/output"
 
 # Check if repos directory exists
 if [ ! -d "$REPOS_DIR" ]; then
@@ -60,8 +59,8 @@ echo "Repos directory: $REPOS_DIR"
 echo "Output directory: $OUTPUT_DIR"
 echo ""
 
-# Count repos
-NUM_REPOS=$(ls -d $REPOS_DIR/*/ 2>/dev/null | wc -l)
+# Count repos (handle spaces in path)
+NUM_REPOS=$(ls -d "$REPOS_DIR"/*/ 2>/dev/null | wc -l)
 echo "Found $NUM_REPOS repositories"
 echo ""
 

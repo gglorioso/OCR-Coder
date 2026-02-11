@@ -12,8 +12,8 @@ Generates 10K training examples in one pass:
 
 Usage:
     python simple_data_gen.py \\
-        --repos-dir /scratch/$USER/coder_vl_data/repos \\
-        --output-dir /scratch/$USER/coder_vl_data \\
+        --repos-dir /scratch/gloriosog/coder_vl_data/repos \\
+        --output-dir /scratch/gloriosog/coder_vl_data \\
         --target 10000 \\
         --style monokai \\
         --font-size 13
@@ -29,8 +29,8 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Tuple
 
-# Import image rendering from existing script
-sys.path.insert(0, str(Path(__file__).parent))
+# Import image rendering from existing script (in parent directory)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from code_to_image import convert_code_to_image
 
 
