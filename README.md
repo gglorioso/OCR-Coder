@@ -24,6 +24,12 @@ Code images (from repo files)
    → Bug localization, explanations, and code fixes
 ```
 
+![DeepSeek-Coder-VL: Vision-to-Code Embedding Transplant](images/architecture-overview.png)
+
+We use a **Sniper Method** that separates scale (vision) from fidelity (text): first localize the bug over the whole repo with compressed visual tokens, then pivot to raw text only for the localized file to produce a character-perfect patch.
+
+![The Sniper Method: Scale vs. Fidelity](images/sniper-method.png)
+
 This repository contains:
 - Experiments validating **visual token compression** on large Python files,
 - Scripts for inspecting and matching the **embedding dimensions** of the vision encoder and code model,
