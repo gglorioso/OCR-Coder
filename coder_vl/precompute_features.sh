@@ -1,20 +1,20 @@
 #!/bin/bash
-#SBATCH --job-name=phase2a-train
+#SBATCH --job-name=precompute-features
 #SBATCH --partition=dgx
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=8
-#SBATCH --time=24:00:00
-#SBATCH --output=slurm-phase2a-%j.out
-#SBATCH --error=slurm-phase2a-%j.err
+#SBATCH --time=2:00:00
+#SBATCH --output=slurm-precompute-%j.out
+#SBATCH --error=slurm-precompute-%j.err
 #SBATCH --mail-user=gloriosog@msoe.edu
 #SBATCH --mail-type=END,FAIL
 
-# Phase 2a: Train projection adapter using pre-computed vision features.
-# Prereq: run precompute_features.sh first to generate ./precomputed_features/
-# Expected: ~8-12 hours on 1x V100 (32 GB) for 1 epoch over 10K examples.
+# Pre-compute vision features for all training images.
+# One-shot job: runs vision encoder over ~2175 images, saves [num_tokens, 1280] tensors.
+# Expected runtime: ~10-30 minutes on 1x V100.
 
 echo "=================================================="
-echo "Phase 2a: Adapter Training (pre-computed features)"
+echo "Pre-computing Vision Features"
 echo "=================================================="
 echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $SLURMD_NODENAME"
@@ -26,15 +26,9 @@ nvidia-smi
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 cd "$HOME/CoderOCR/OCR-Coder" || exit 1
 
-"$PYTHON" coder_vl/train_projector.py \
-    --features_dir ./precomputed_features \
-    --batch_size 4 \
-    --lr 1e-3 \
-    --epochs 1 \
-    --grad_accum 4 \
-    --checkpoint_dir ./checkpoints/phase2a \
-    --eval_steps 50 \
-    --log_steps 10
+"$PYTHON" coder_vl/precompute_features.py \
+    --output_dir ./precomputed_features \
+    --image_size 768
 
 EXIT_CODE=$?
 

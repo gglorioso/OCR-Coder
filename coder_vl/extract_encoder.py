@@ -180,14 +180,15 @@ def extract_vision_encoder(
         output_dir = Path(output_path).parent
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save with metadata
+        # Save as checkpoint dict with state_dict
+        # The full module can't be pickled due to custom DeepSeek components
+        # The loading code in model.py handles this format by reconstructing from DeepSeek-OCR-2
         checkpoint = {
             'vision_encoder': vision_encoder.state_dict(),
             'model_source': model_path,
             'num_parameters': total_params,
             'expected_output_dim': 1280,
         }
-
         torch.save(checkpoint, output_path)
 
         # Check file size

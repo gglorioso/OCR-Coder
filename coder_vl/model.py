@@ -20,6 +20,26 @@ from PIL import Image
 from projector import ProjectionAdapter
 
 
+class VisionEncoderPipeline(nn.Module):
+    """
+    Standalone vision encoder extracted from DeepSeek-OCR-2.
+    This is a simple wrapper that will be loaded from the extracted checkpoint.
+    """
+
+    def __init__(self, sam, decoder2encoder, mlp_projector):
+        super().__init__()
+        self.sam = sam
+        self.decoder2encoder = decoder2encoder
+        self.mlp_projector = mlp_projector
+
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        """Encode images to visual features."""
+        sam_features = self.sam(images)
+        encoder_features = self.decoder2encoder(sam_features)
+        visual_features = self.mlp_projector(encoder_features)
+        return visual_features
+
+
 class CoderVLModel(nn.Module):
     """
     Vision-enabled DeepSeek-Coder model.
@@ -35,6 +55,8 @@ class CoderVLModel(nn.Module):
         adapter_hidden_dim: int = 4096,
         freeze_vision: bool = True,
         freeze_coder: bool = True,
+        load_in_8bit: bool = False,
+        device: Optional[str] = None,
     ):
         super().__init__()
 
@@ -47,11 +69,25 @@ class CoderVLModel(nn.Module):
             self._freeze_model(self.vision_encoder)
             print("  Vision encoder frozen ✓")
 
-        # Load coder model
+        # Load coder model (with optional 8-bit quantization to save VRAM)
         print(f"Loading coder model from {coder_model_path}...")
+        if load_in_8bit:
+            print("  Using 8-bit quantization (reduces VRAM: 32GB → ~8GB)")
+
+        # For distributed training with 8-bit, we need to specify the device
+        # device_map="auto" spreads across all GPUs, which breaks DDP
+        if load_in_8bit and device is not None:
+            device_map = {"": device}
+        elif load_in_8bit:
+            device_map = "auto"
+        else:
+            device_map = None
+
         self.coder_model = AutoModelForCausalLM.from_pretrained(
             coder_model_path,
-            torch_dtype=torch.bfloat16,
+            torch_dtype=torch.bfloat16 if not load_in_8bit else None,
+            load_in_8bit=load_in_8bit,
+            device_map=device_map,
             trust_remote_code=True,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -88,14 +124,45 @@ class CoderVLModel(nn.Module):
         """
         Load extracted vision encoder from DeepSeek-OCR-2.
 
-        Expected: Standalone module saved by extract_encoder.py
+        Expected: Full VisionEncoderPipeline module or checkpoint dict
         Output: [batch, 256, 1280] per image (base view, no tiling)
                 Up to [batch, 256*7, 1280] with max 6 patches
         """
-        # TODO: This will load the extracted encoder saved by extract_encoder.py
-        # For now, placeholder that will be replaced
-        vision_encoder = torch.load(path, map_location="cpu")
-        return vision_encoder
+        loaded = torch.load(path, map_location="cpu")
+
+        # Handle both checkpoint dict and full module formats
+        if isinstance(loaded, nn.Module):
+            # Full module format (if successfully pickled)
+            return loaded
+        elif isinstance(loaded, dict) and 'vision_encoder' in loaded:
+            # Checkpoint dict with state_dict (standard format)
+            # Reconstructs architecture from DeepSeek-OCR-2 (cached by HuggingFace after first download)
+            print("  Loading from checkpoint dict format...")
+            print("  (Will download DeepSeek-OCR-2 on first run - cached thereafter)")
+
+            from transformers import AutoModel
+
+            # Load full model to get architecture
+            model = AutoModel.from_pretrained(
+                loaded.get('model_source', 'deepseek-ai/deepseek-ocr-2'),
+                torch_dtype=torch.float16,
+                trust_remote_code=True,
+            )
+
+            # Extract vision components
+            sam = model.model.sam_model
+            decoder2encoder = model.model.qwen2_model
+            mlp_projector = model.model.projector
+
+            # Create pipeline
+            vision_encoder = VisionEncoderPipeline(sam, decoder2encoder, mlp_projector)
+
+            # Load saved weights
+            vision_encoder.load_state_dict(loaded['vision_encoder'])
+
+            return vision_encoder
+        else:
+            raise ValueError(f"Unexpected format: {type(loaded)}")
 
     def _add_special_tokens(self):
         """Add vision-specific special tokens to tokenizer."""

@@ -1,598 +1,460 @@
 """
-Phase 2a Training Script - Projection Adapter Alignment
+Phase 2a Training — Projection Adapter (Simplified)
 
-Trains the projection adapter to map vision tokens to coder embedding space.
-- Trainable: Adapter only (13.6M params)
-- Frozen: Vision encoder + coder model
+Trains the projection adapter to map pre-computed vision features into the
+coder model's embedding space.  Everything that isn't strictly needed is gone:
+no DDP, no wandb, no gradient checkpointing, no vision encoder in VRAM.
+
+What runs on GPU:
+  - Coder model  (8-bit quantized, frozen)   ~8-10 GB
+  - Adapter      (13.6M params, trainable)   ~55 MB
+  - Activations  (for backprop through coder) ~3-5 GB
+  Total: ~13-17 GB  →  fits on a single V100 (32 GB)
 
 Usage:
-    python train_projector.py --config config_phase2a.yaml
+    python train_projector.py --features_dir ./precomputed_features
 """
 
 import os
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Optional
-from dataclasses import dataclass
-from PIL import Image
 
 import torch
-import torch.nn as nn
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.distributed import DistributedSampler
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from transformers import get_cosine_schedule_with_warmup
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    BitsAndBytesConfig,
+    get_cosine_schedule_with_warmup,
+)
 from tqdm import tqdm
-import wandb
 
-from model import CoderVLModel
-
-
-@dataclass
-class TrainingConfig:
-    """Phase 2a training configuration."""
-
-    # Data
-    train_manifest: str = "Data Crawling/output/manifests/train.jsonl"
-    val_manifest: str = "Data Crawling/output/manifests/val.jsonl"
-    image_root: str = "Data Crawling/output/images"
-
-    # Model paths
-    vision_encoder_path: str = "./models/vision_encoder.pt"
-    coder_model_path: str = "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct"
-
-    # Training hyperparameters (Phase 2a - from PHASE2_PLAN.md Section 5)
-    batch_size_per_gpu: int = 8
-    gradient_accumulation_steps: int = 4  # Effective batch = 32
-    learning_rate: float = 1e-3  # High LR safe for adapter-only
-    weight_decay: float = 0.0
-    warmup_ratio: float = 0.03
-    num_epochs: int = 1
-    max_seq_length: int = 2048
-
-    # Optimization
-    precision: str = "bf16"  # bfloat16 for H100
-    gradient_checkpointing: bool = True
-
-    # Checkpointing and eval
-    checkpoint_dir: str = "./checkpoints/phase2a"
-    checkpoint_interval_minutes: int = 30
-    eval_steps: int = 50
-    save_total_limit: int = 3  # Keep last 3 checkpoints
-
-    # Logging
-    log_steps: int = 10
-    wandb_project: str = "deepseek-coder-vl"
-    wandb_run_name: str = "phase2a-adapter"
-
-    # Device
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-
-    # Distributed training
-    distributed: bool = False  # Auto-set in main() if multiple GPUs
-    local_rank: int = -1       # Set via environment variable
-    world_size: int = 1        # Total number of processes
+from projector import ProjectionAdapter
 
 
-class CodeVLDataset(Dataset):
-    """Dataset for code image + QA pairs."""
+# ---------------------------------------------------------------------------
+# Dataset
+# ---------------------------------------------------------------------------
 
-    def __init__(
-        self,
-        manifest_path: str,
-        image_root: str,
-        tokenizer,
-        max_seq_length: int = 2048,
-    ):
-        self.image_root = Path(image_root)
+class PrecomputedDataset(Dataset):
+    """
+    Loads pre-computed vision features + tokenized text for each example.
+
+    All unique feature tensors are cached in CPU memory at init time
+    (~1.4 GB for 2175 images in fp16).  Individual __getitem__ calls
+    are just dict lookups + tokenization.
+    """
+
+    def __init__(self, manifest_path, features_dir, tokenizer, max_seq_length=2048):
+        self.features_dir = Path(features_dir)
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
 
         # Load manifest
-        print(f"Loading manifest from {manifest_path}...")
         self.examples = []
-        with open(manifest_path, "r") as f:
+        with open(manifest_path) as f:
             for line in f:
                 self.examples.append(json.loads(line))
-        print(f"  Loaded {len(self.examples)} examples")
+        print(f"  Loaded {len(self.examples)} examples from {manifest_path}")
 
-    def __len__(self) -> int:
+        # Cache all unique feature files in memory
+        self._cache = {}
+        self._load_features()
+
+        # Drop examples whose features are missing (e.g. decompression bombs)
+        before = len(self.examples)
+        self.examples = [ex for ex in self.examples if ex["image"] in self._cache]
+        if before != len(self.examples):
+            print(f"  Filtered out {before - len(self.examples)} examples with missing features "
+                  f"({len(self.examples)} remaining)")
+
+    def _load_features(self):
+        loaded, missing = 0, 0
+        for ex in self.examples:
+            img = ex["image"]
+            if img in self._cache:
+                continue
+            feat_file = self.features_dir / (Path(img).stem + ".pt")
+            if feat_file.exists():
+                self._cache[img] = torch.load(feat_file, map_location="cpu")
+                loaded += 1
+            else:
+                missing += 1
+        print(f"  Cached {loaded} unique feature files  ({missing} missing)")
+
+    def __len__(self):
         return len(self.examples)
 
-    def __getitem__(self, idx: int) -> Dict:
-        example = self.examples[idx]
+    def __getitem__(self, idx):
+        ex = self.examples[idx]
 
-        # Load and preprocess image
-        image_path = example["image"]
-        # Make path absolute if relative
-        if not Path(image_path).is_absolute():
-            image_path = self.image_root.parent.parent / image_path
-
-        image = Image.open(image_path).convert("RGB")
-        # TODO: Apply vision encoder's preprocessing transform
-        # For now, placeholder - this needs to match DeepSeek-OCR-2's preprocessing
-        image_tensor = self._preprocess_image(image)
+        # Pre-computed vision features  [num_tokens, 1280]
+        features = self._cache[ex["image"]]
 
         # Build conversation text
-        conversation = example["conversations"]
-        user_msg = conversation[0]["content"]
-        assistant_msg = conversation[1]["content"]
-
-        # Format as instruction template
-        # DeepSeek-Coder uses format: "User: {user}\n\nAssistant: {assistant}"
-        full_text = f"User: {user_msg}\n\nAssistant: {assistant_msg}"
+        conv = ex["conversations"]
+        user_msg = conv[0]["content"]
+        assistant_msg = conv[1]["content"]
+        text = f"User: {user_msg}\n\nAssistant: {assistant_msg}"
 
         # Tokenize
-        tokenized = self.tokenizer(
-            full_text,
+        tok = self.tokenizer(
+            text,
             return_tensors="pt",
             max_length=self.max_seq_length,
             truncation=True,
             padding="max_length",
         )
+        input_ids = tok["input_ids"].squeeze(0)
 
-        input_ids = tokenized["input_ids"].squeeze(0)  # [seq_len]
-
-        # Create labels (mask out user prompt and image tokens)
+        # Labels: mask everything up to and including "Assistant:" with -100
         labels = input_ids.clone()
-
-        # Find "Assistant:" position to mask user prompt
-        assistant_token = self.tokenizer.encode("Assistant:", add_special_tokens=False)
-        assistant_start = self._find_subsequence(input_ids, assistant_token)
-
-        if assistant_start != -1:
-            # Mask everything before "Assistant:" (user prompt + image)
-            labels[:assistant_start + len(assistant_token)] = -100
+        asst_tokens = self.tokenizer.encode("Assistant:", add_special_tokens=False)
+        pos = _find_subseq(input_ids.tolist(), asst_tokens)
+        if pos != -1:
+            labels[: pos + len(asst_tokens)] = -100
         else:
-            # Fallback: mask first half (heuristic)
-            labels[:len(labels)//2] = -100
+            # Fallback: mask first half
+            labels[: len(labels) // 2] = -100
 
-        # Mask padding tokens
-        labels[labels == self.tokenizer.pad_token_id] = -100
+        # Mask padding
+        pad_id = self.tokenizer.pad_token_id
+        if pad_id is not None:
+            labels[labels == pad_id] = -100
 
-        return {
-            "input_ids": input_ids,
-            "labels": labels,
-            "images": image_tensor,
-            "example_id": example["id"],
-        }
-
-    def _preprocess_image(self, image: Image.Image) -> torch.Tensor:
-        """
-        Preprocess image for vision encoder.
-
-        TODO: This should match DeepSeek-OCR-2's preprocessing exactly.
-        For now, placeholder that needs to be replaced.
-        """
-        # Placeholder preprocessing
-        # Real implementation needs to use DeepSeek-OCR-2's processor
-        from torchvision import transforms
-
-        transform = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-
-        return transform(image)
-
-    def _find_subsequence(self, tensor: torch.Tensor, subseq: List[int]) -> int:
-        """Find starting position of subsequence in tensor. Returns -1 if not found."""
-        tensor_list = tensor.tolist()
-        subseq_len = len(subseq)
-
-        for i in range(len(tensor_list) - subseq_len + 1):
-            if tensor_list[i:i+subseq_len] == subseq:
-                return i
-
-        return -1
+        return {"input_ids": input_ids, "labels": labels, "features": features}
 
 
-class Trainer:
-    """Trainer for Phase 2a adapter alignment."""
+def _find_subseq(lst, sub):
+    """Find the start index of *sub* inside *lst*, or -1."""
+    n = len(sub)
+    for i in range(len(lst) - n + 1):
+        if lst[i : i + n] == sub:
+            return i
+    return -1
 
-    def __init__(self, config: TrainingConfig):
-        self.config = config
-        self.is_main_process = not config.distributed or config.local_rank == 0
 
-        # Initialize wandb (only on main process)
-        if config.wandb_project and self.is_main_process:
-            wandb.init(
-                project=config.wandb_project,
-                name=config.wandb_run_name,
-                config=vars(config),
-            )
+# ---------------------------------------------------------------------------
+# Token-replacement helpers
+# ---------------------------------------------------------------------------
 
-        # Create checkpoint directory
-        os.makedirs(config.checkpoint_dir, exist_ok=True)
+def replace_image_tokens(input_ids, projected, image_token_id, embed_fn):
+    """
+    Replace <image> placeholder in each sequence with projected visual tokens.
 
-        # Initialize model
-        print("\n" + "="*60)
-        print("INITIALIZING CODERVL MODEL")
-        print("="*60)
+    Args:
+        input_ids:      [B, seq]           token ids (contains one <image> each)
+        projected:      [B, vis_tok, dim]  adapter output in fp16
+        image_token_id: int                id of <image> token
+        embed_fn:       nn.Embedding       coder model's input embedding layer
 
-        self.model = CoderVLModel(
-            vision_encoder_path=config.vision_encoder_path,
-            coder_model_path=config.coder_model_path,
-            freeze_vision=True,
-            freeze_coder=True,
-        )
+    Returns:
+        embeds:  [B, new_seq, dim]   combined text + visual embeddings
+        mask:    [B, new_seq]        attention mask (1 = attend, 0 = pad)
+    """
+    batch = input_ids.size(0)
+    text_embeds = embed_fn(input_ids)  # [B, seq, dim]
 
-        print(f"\nTrainable parameters: {self.model.num_trainable_parameters():,}")
-
-        # Move to device
-        self.model = self.model.to(config.device)
-
-        # Wrap with DDP if distributed
-        if config.distributed:
-            self.model = DDP(
-                self.model,
-                device_ids=[config.local_rank],
-                output_device=config.local_rank,
-                find_unused_parameters=False,  # All adapter params are used
-            )
-            print(f"Model wrapped with DDP (rank {config.local_rank}/{config.world_size}) ✓")
-
-        # Enable gradient checkpointing if requested
-        if config.gradient_checkpointing:
-            # Access underlying model if wrapped with DDP
-            model_to_checkpoint = self.model.module if config.distributed else self.model
-            model_to_checkpoint.coder_model.gradient_checkpointing_enable()
-            print("Gradient checkpointing enabled ✓")
-
-        # Setup precision
-        self.scaler = None
-        if config.precision == "bf16":
-            self.dtype = torch.bfloat16
-            print(f"Using {config.precision} precision ✓")
+    out_embeds = []
+    for i in range(batch):
+        positions = (input_ids[i] == image_token_id).nonzero(as_tuple=True)[0]
+        if len(positions) == 0:
+            out_embeds.append(text_embeds[i])
         else:
-            self.dtype = torch.float32
+            p = positions[0].item()
+            combined = torch.cat(
+                [text_embeds[i, :p], projected[i], text_embeds[i, p + 1:]],
+                dim=0,
+            )
+            out_embeds.append(combined)
 
-        # Create datasets
-        print("\n" + "="*60)
-        print("LOADING DATASETS")
-        print("="*60)
+    # Pad to longest sequence in batch
+    max_len = max(e.size(0) for e in out_embeds)
+    padded, masks = [], []
+    for e in out_embeds:
+        pad = max_len - e.size(0)
+        if pad > 0:
+            e = torch.cat([e, torch.zeros(pad, e.size(1), device=e.device, dtype=e.dtype)])
+        mask = torch.ones(max_len, device=e.device)
+        if pad > 0:
+            mask[-pad:] = 0
+        padded.append(e)
+        masks.append(mask)
 
-        self.train_dataset = CodeVLDataset(
-            manifest_path=config.train_manifest,
-            image_root=config.image_root,
-            tokenizer=self.model.tokenizer,
-            max_seq_length=config.max_seq_length,
-        )
-
-        self.val_dataset = CodeVLDataset(
-            manifest_path=config.val_manifest,
-            image_root=config.image_root,
-            tokenizer=self.model.tokenizer,
-            max_seq_length=config.max_seq_length,
-        )
-
-        # Create dataloaders with optional distributed sampler
-        train_sampler = DistributedSampler(
-            self.train_dataset,
-            num_replicas=config.world_size,
-            rank=config.local_rank,
-            shuffle=True,
-        ) if config.distributed else None
-
-        val_sampler = DistributedSampler(
-            self.val_dataset,
-            num_replicas=config.world_size,
-            rank=config.local_rank,
-            shuffle=False,
-        ) if config.distributed else None
-
-        self.train_loader = DataLoader(
-            self.train_dataset,
-            batch_size=config.batch_size_per_gpu,
-            sampler=train_sampler,
-            shuffle=(train_sampler is None),  # Only shuffle if not using sampler
-            num_workers=4,
-            pin_memory=True,
-        )
-
-        self.val_loader = DataLoader(
-            self.val_dataset,
-            batch_size=config.batch_size_per_gpu,
-            sampler=val_sampler,
-            shuffle=False,
-            num_workers=4,
-            pin_memory=True,
-        )
-
-        self.train_sampler = train_sampler  # Save for epoch shuffling
-
-        # Setup optimizer (handle DDP wrapper)
-        model_unwrapped = self.model.module if config.distributed else self.model
-        self.optimizer = AdamW(
-            model_unwrapped.adapter.parameters(),  # Only adapter is trainable
-            lr=config.learning_rate,
-            weight_decay=config.weight_decay,
-        )
-
-        # Setup learning rate scheduler
-        num_training_steps = len(self.train_loader) * config.num_epochs // config.gradient_accumulation_steps
-        num_warmup_steps = int(num_training_steps * config.warmup_ratio)
-
-        self.scheduler = get_cosine_schedule_with_warmup(
-            self.optimizer,
-            num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps,
-        )
-
-        print(f"\nTraining steps: {num_training_steps:,}")
-        print(f"Warmup steps: {num_warmup_steps:,}")
-        effective_batch = config.batch_size_per_gpu * config.gradient_accumulation_steps * config.world_size
-        print(f"Effective batch size: {effective_batch} (per_gpu={config.batch_size_per_gpu}, accum={config.gradient_accumulation_steps}, gpus={config.world_size})")
-
-        # Training state
-        self.global_step = 0
-        self.current_epoch = 0
-
-    def train(self):
-        """Run training loop."""
-        print("\n" + "="*60)
-        print("STARTING TRAINING")
-        print("="*60 + "\n")
-
-        for epoch in range(self.config.num_epochs):
-            self.current_epoch = epoch
-            print(f"\n{'='*60}")
-            print(f"Epoch {epoch + 1}/{self.config.num_epochs}")
-            print(f"{'='*60}\n")
-
-            self.train_epoch()
-
-            # Final validation
-            val_loss = self.evaluate()
-            print(f"\nEpoch {epoch + 1} validation loss: {val_loss:.4f}")
-
-        print("\n" + "="*60)
-        print("TRAINING COMPLETE")
-        print("="*60)
-
-        # Save final checkpoint
-        self.save_checkpoint("final")
-
-    def train_epoch(self):
-        """Train for one epoch."""
-        # Set epoch for distributed sampler (ensures proper shuffling)
-        if self.config.distributed and self.train_sampler is not None:
-            self.train_sampler.set_epoch(self.current_epoch)
-
-        self.model.train()
-
-        total_loss = 0
-        num_batches = 0
-
-        # Only show progress bar on main process
-        progress_bar = tqdm(
-            self.train_loader,
-            desc="Training",
-            disable=not self.is_main_process
-        )
-
-        for batch_idx, batch in enumerate(progress_bar):
-            # Move to device
-            input_ids = batch["input_ids"].to(self.config.device)
-            labels = batch["labels"].to(self.config.device)
-            images = batch["images"].to(self.config.device)
-
-            # Forward pass with mixed precision
-            with torch.autocast(device_type="cuda", dtype=self.dtype):
-                outputs = self.model(
-                    input_ids=input_ids,
-                    images=images,
-                    labels=labels,
-                )
-
-                loss = outputs["loss"] / self.config.gradient_accumulation_steps
-
-            # Backward pass
-            loss.backward()
-
-            # Optimizer step every gradient_accumulation_steps
-            if (batch_idx + 1) % self.config.gradient_accumulation_steps == 0:
-                # Clip gradients (handle DDP wrapper)
-                model_unwrapped = self.model.module if self.config.distributed else self.model
-                torch.nn.utils.clip_grad_norm_(model_unwrapped.adapter.parameters(), max_norm=1.0)
-
-                # Update weights
-                self.optimizer.step()
-                self.scheduler.step()
-                self.optimizer.zero_grad()
-
-                self.global_step += 1
-
-                # Log metrics (only on main process)
-                if self.is_main_process and self.global_step % self.config.log_steps == 0:
-                    lr = self.scheduler.get_last_lr()[0]
-                    wandb.log({
-                        "train/loss": loss.item() * self.config.gradient_accumulation_steps,
-                        "train/lr": lr,
-                        "train/epoch": self.current_epoch,
-                        "train/step": self.global_step,
-                    })
-
-                # Evaluate (only on main process to avoid duplicate validation)
-                if self.is_main_process and self.global_step % self.config.eval_steps == 0:
-                    val_loss = self.evaluate()
-                    print(f"\nStep {self.global_step} - Val loss: {val_loss:.4f}")
-                    self.model.train()  # Back to training mode
-
-            total_loss += loss.item() * self.config.gradient_accumulation_steps
-            num_batches += 1
-
-            # Update progress bar
-            avg_loss = total_loss / num_batches
-            progress_bar.set_postfix({"loss": f"{avg_loss:.4f}"})
-
-    @torch.no_grad()
-    def evaluate(self) -> float:
-        """Evaluate on validation set."""
-        self.model.eval()
-
-        total_loss = 0
-        num_batches = 0
-
-        for batch in tqdm(self.val_loader, desc="Evaluating", disable=not self.is_main_process):
-            input_ids = batch["input_ids"].to(self.config.device)
-            labels = batch["labels"].to(self.config.device)
-            images = batch["images"].to(self.config.device)
-
-            with torch.autocast(device_type="cuda", dtype=self.dtype):
-                outputs = self.model(
-                    input_ids=input_ids,
-                    images=images,
-                    labels=labels,
-                )
-
-            total_loss += outputs["loss"].item()
-            num_batches += 1
-
-        avg_loss = total_loss / num_batches
-
-        # Log to wandb (only on main process)
-        if self.is_main_process:
-            wandb.log({
-                "val/loss": avg_loss,
-                "val/step": self.global_step,
-            })
-
-        return avg_loss
-
-    def save_checkpoint(self, name: str = "checkpoint"):
-        """Save model checkpoint (only on main process)."""
-        if not self.is_main_process:
-            return  # Only save on rank 0
-
-        checkpoint_path = os.path.join(self.config.checkpoint_dir, f"{name}_step{self.global_step}.pt")
-
-        # Unwrap DDP if needed
-        model_unwrapped = self.model.module if self.config.distributed else self.model
-
-        checkpoint = {
-            "global_step": self.global_step,
-            "epoch": self.current_epoch,
-            "adapter_state_dict": model_unwrapped.adapter.state_dict(),
-            "optimizer_state_dict": self.optimizer.state_dict(),
-            "scheduler_state_dict": self.scheduler.state_dict(),
-            "config": vars(self.config),
-        }
-
-        # Atomic save: write to .tmp then rename
-        tmp_path = checkpoint_path + ".tmp"
-        torch.save(checkpoint, tmp_path)
-        os.rename(tmp_path, checkpoint_path)
-
-        print(f"Checkpoint saved: {checkpoint_path}")
-
-        # Cleanup old checkpoints (keep last N)
-        self._cleanup_old_checkpoints()
-
-    def _cleanup_old_checkpoints(self):
-        """Remove old checkpoints, keeping only the last N."""
-        checkpoints = sorted(
-            Path(self.config.checkpoint_dir).glob("checkpoint_step*.pt"),
-            key=lambda x: x.stat().st_mtime,
-        )
-
-        # Remove oldest checkpoints if we exceed the limit
-        while len(checkpoints) > self.config.save_total_limit:
-            oldest = checkpoints.pop(0)
-            oldest.unlink()
-            print(f"Removed old checkpoint: {oldest}")
+    return torch.stack(padded), torch.stack(masks)
 
 
-def setup_distributed():
-    """Initialize distributed training from SLURM environment."""
-    # Check if running in SLURM with multiple tasks
-    if "SLURM_PROCID" in os.environ:
-        # SLURM environment
-        rank = int(os.environ["SLURM_PROCID"])
-        world_size = int(os.environ["SLURM_NTASKS"])
-        local_rank = int(os.environ["SLURM_LOCALID"])
+def expand_labels(labels, input_ids, image_token_id, num_visual_tokens):
+    """
+    Expand labels to match the longer sequence after <image> is replaced
+    with *num_visual_tokens* visual tokens (all labelled -100).
+    """
+    batch = labels.size(0)
+    out = []
+    for i in range(batch):
+        positions = (input_ids[i] == image_token_id).nonzero(as_tuple=True)[0]
+        if len(positions) == 0:
+            out.append(labels[i])
+        else:
+            p = positions[0].item()
+            vis = torch.full((num_visual_tokens,), -100,
+                             dtype=labels.dtype, device=labels.device)
+            out.append(torch.cat([labels[i, :p], vis, labels[i, p + 1:]]))
 
-        # Initialize process group
-        dist.init_process_group(
-            backend="nccl",
-            init_method="env://",
-            world_size=world_size,
-            rank=rank,
-        )
+    max_len = max(l.size(0) for l in out)
+    padded = []
+    for l in out:
+        pad = max_len - l.size(0)
+        if pad > 0:
+            l = torch.cat([l, torch.full((pad,), -100, dtype=l.dtype, device=l.device)])
+        padded.append(l)
 
-        # Set device
-        torch.cuda.set_device(local_rank)
-
-        return True, local_rank, world_size
-
-    # Check for torchrun/torch.distributed.launch
-    elif "LOCAL_RANK" in os.environ:
-        local_rank = int(os.environ["LOCAL_RANK"])
-        world_size = int(os.environ["WORLD_SIZE"])
-        rank = int(os.environ["RANK"])
-
-        dist.init_process_group(backend="nccl")
-        torch.cuda.set_device(local_rank)
-
-        return True, local_rank, world_size
-
-    # Single GPU training
-    return False, -1, 1
+    return torch.stack(padded)
 
 
-def cleanup_distributed():
-    """Cleanup distributed training."""
-    if dist.is_initialized():
-        dist.destroy_process_group()
+# ---------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------
 
+@torch.no_grad()
+def evaluate(adapter, coder, loader, image_token_id, embed_fn, device):
+    adapter.eval()
+    total_loss, n = 0.0, 0
+    for batch in loader:
+        ids  = batch["input_ids"].to(device)
+        lbl  = batch["labels"].to(device)
+        feat = batch["features"].to(device)
+
+        projected = adapter(feat.float()).half()
+        embeds, mask = replace_image_tokens(ids, projected, image_token_id, embed_fn)
+        adj_labels = expand_labels(lbl, ids, image_token_id, feat.size(1))
+
+        loss = coder(inputs_embeds=embeds, attention_mask=mask, labels=adj_labels).loss
+        total_loss += loss.item()
+        n += 1
+    return total_loss / max(n, 1)
+
+
+# ---------------------------------------------------------------------------
+# Checkpointing
+# ---------------------------------------------------------------------------
+
+def save_checkpoint(adapter, optimizer, scheduler, step, epoch, ckpt_dir, name):
+    path = os.path.join(ckpt_dir, f"{name}.pt")
+    torch.save({
+        "adapter_state_dict": adapter.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict(),
+        "global_step": step,
+        "epoch": epoch,
+    }, path)
+    print(f"  Saved checkpoint: {path}")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Phase 2a Training - Adapter Alignment")
-
-    # Config file or individual args
-    parser.add_argument("--config", type=str, help="Path to config YAML file")
-
-    # Override individual settings
-    parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--learning_rate", type=float, default=1e-3)
-    parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/phase2a")
-
+    parser = argparse.ArgumentParser(description="Phase 2a — Train projection adapter")
+    parser.add_argument("--features_dir", default="./precomputed_features")
+    parser.add_argument("--train_manifest",
+                        default="Data Crawling/output/manifests/train.jsonl")
+    parser.add_argument("--val_manifest",
+                        default="Data Crawling/output/manifests/val.jsonl")
+    parser.add_argument("--coder_model",
+                        default="deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct")
+    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--grad_accum", type=int, default=4)
+    parser.add_argument("--max_seq_length", type=int, default=2048)
+    parser.add_argument("--checkpoint_dir", default="./checkpoints/phase2a")
+    parser.add_argument("--eval_steps", type=int, default=50)
+    parser.add_argument("--log_steps", type=int, default=10)
     args = parser.parse_args()
 
-    # Setup distributed training if applicable
-    distributed, local_rank, world_size = setup_distributed()
+    device = "cuda"
 
-    if distributed:
-        print(f"Distributed training initialized: rank {local_rank}/{world_size}")
+    # ==================================================================
+    # 1.  Load coder model  (8-bit quantized, frozen, fp16 non-quant params)
+    # ==================================================================
+    print("=" * 60)
+    print("LOADING CODER MODEL (4-bit, fp16)")
+    print("=" * 60)
 
-    # Load config
-    config = TrainingConfig()
-    config.distributed = distributed
-    config.local_rank = local_rank
-    config.world_size = world_size
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,
+    )
+    coder = AutoModelForCausalLM.from_pretrained(
+        args.coder_model,
+        quantization_config=bnb_config,
+        torch_dtype=torch.float16,       # keeps non-quantized params in fp16
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.coder_model, trust_remote_code=True,
+    )
 
-    # Override with command line args
-    if args.batch_size:
-        config.batch_size_per_gpu = args.batch_size
-    if args.learning_rate:
-        config.learning_rate = args.learning_rate
-    if args.checkpoint_dir:
-        config.checkpoint_dir = args.checkpoint_dir
+    # Add vision special tokens
+    tokenizer.add_special_tokens(
+        {"additional_special_tokens": ["<image>", "<img_start>", "<img_end>"]}
+    )
+    coder.resize_token_embeddings(len(tokenizer))
 
-    try:
-        # Initialize trainer
-        trainer = Trainer(config)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
 
-        # Start training
-        trainer.train()
-    finally:
-        # Cleanup distributed training
-        cleanup_distributed()
+    # Freeze entire coder model
+    for p in coder.parameters():
+        p.requires_grad = False
+
+    # Gradient checkpointing: recompute activations during backward instead of
+    # storing them, trading ~30% more compute for ~60-70% less activation memory.
+    # Must set model to train mode — checkpointing only activates when self.training=True.
+    # Safe because instruction-tuned models have dropout=0.0 (train/eval behave identically).
+    coder.gradient_checkpointing_enable()
+    coder.train()
+    print("  Gradient checkpointing enabled (train mode for activation)")
+
+    image_token_id = tokenizer.convert_tokens_to_ids("<image>")
+    coder_dim = coder.config.hidden_size
+    print(f"  hidden_size={coder_dim}  image_token_id={image_token_id}")
+    print(f"  Coder model loaded and frozen\n")
+
+    # ==================================================================
+    # 2.  Create adapter  (trainable, fp32 weights)
+    # ==================================================================
+    print(f"Creating adapter (1280 -> {coder_dim}) ...")
+    adapter = ProjectionAdapter(vision_dim=1280, hidden_dim=4096, coder_dim=coder_dim)
+    adapter = adapter.to(device)
+    print(f"  Parameters: {adapter.num_parameters():,}\n")
+
+    # ==================================================================
+    # 3.  Datasets  (pre-computed features, all cached in CPU RAM)
+    # ==================================================================
+    print("Loading datasets ...")
+    train_ds = PrecomputedDataset(
+        args.train_manifest, args.features_dir, tokenizer, args.max_seq_length,
+    )
+    val_ds = PrecomputedDataset(
+        args.val_manifest, args.features_dir, tokenizer, args.max_seq_length,
+    )
+
+    train_loader = DataLoader(
+        train_ds, batch_size=args.batch_size, shuffle=True,
+        num_workers=2, pin_memory=True,
+    )
+    val_loader = DataLoader(
+        val_ds, batch_size=args.batch_size, shuffle=False,
+        num_workers=2, pin_memory=True,
+    )
+
+    # ==================================================================
+    # 4.  Optimizer & scheduler
+    # ==================================================================
+    optimizer = AdamW(adapter.parameters(), lr=args.lr, weight_decay=0.0)
+    total_steps = len(train_loader) * args.epochs // args.grad_accum
+    warmup_steps = int(total_steps * 0.03)
+    scheduler = get_cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps)
+
+    eff_batch = args.batch_size * args.grad_accum
+    print(f"\nTraining plan:")
+    print(f"  Steps: {total_steps}   Warmup: {warmup_steps}")
+    print(f"  Effective batch size: {eff_batch}")
+    print(f"  Epochs: {args.epochs}\n")
+
+    # ==================================================================
+    # 5.  Training loop
+    # ==================================================================
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
+    embed_fn = coder.get_input_embeddings()
+    global_step = 0
+    best_val_loss = float("inf")
+
+    print("=" * 60)
+    print("STARTING TRAINING")
+    print("=" * 60 + "\n")
+
+    for epoch in range(args.epochs):
+        adapter.train()
+        epoch_loss, n_batches = 0.0, 0
+        progress = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}")
+
+        for batch_idx, batch in enumerate(progress):
+            ids  = batch["input_ids"].to(device)
+            lbl  = batch["labels"].to(device)
+            feat = batch["features"].to(device)
+
+            # Features are fp16 from pre-compute; adapter weights are fp32
+            # Cast to fp32 for adapter, then back to fp16 for coder model
+            projected = adapter(feat.float()).half()
+
+            # Replace <image> placeholder with visual tokens
+            embeds, mask = replace_image_tokens(
+                ids, projected, image_token_id, embed_fn,
+            )
+            adj_labels = expand_labels(lbl, ids, image_token_id, feat.size(1))
+
+            # Forward through frozen coder — no autocast needed
+            loss = coder(
+                inputs_embeds=embeds,
+                attention_mask=mask,
+                labels=adj_labels,
+            ).loss
+            loss = loss / args.grad_accum
+            loss.backward()
+
+            if (batch_idx + 1) % args.grad_accum == 0:
+                torch.nn.utils.clip_grad_norm_(adapter.parameters(), 1.0)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+                global_step += 1
+
+                # Log
+                if global_step % args.log_steps == 0:
+                    lr = scheduler.get_last_lr()[0]
+                    print(f"  step={global_step}  "
+                          f"loss={loss.item() * args.grad_accum:.4f}  "
+                          f"lr={lr:.2e}")
+
+                # Validate
+                if global_step % args.eval_steps == 0:
+                    vl = evaluate(
+                        adapter, coder, val_loader,
+                        image_token_id, embed_fn, device,
+                    )
+                    print(f"  step={global_step}  val_loss={vl:.4f}")
+                    if vl < best_val_loss:
+                        best_val_loss = vl
+                        save_checkpoint(
+                            adapter, optimizer, scheduler,
+                            global_step, epoch, args.checkpoint_dir, "best",
+                        )
+                    adapter.train()
+
+            epoch_loss += loss.item() * args.grad_accum
+            n_batches += 1
+            progress.set_postfix(loss=f"{epoch_loss / n_batches:.4f}")
+
+        avg = epoch_loss / max(n_batches, 1)
+        print(f"\nEpoch {epoch + 1} — avg train loss: {avg:.4f}")
+        save_checkpoint(
+            adapter, optimizer, scheduler,
+            global_step, epoch, args.checkpoint_dir, f"epoch{epoch + 1}",
+        )
+
+    # Final save (adapter weights only, for easy loading later)
+    final_path = os.path.join(args.checkpoint_dir, "adapter_final.pt")
+    torch.save(adapter.state_dict(), final_path)
+    print(f"\nSaved final adapter weights: {final_path}")
+    print(f"Best validation loss: {best_val_loss:.4f}")
+    print("Training complete!")
 
 
 if __name__ == "__main__":
