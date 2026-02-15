@@ -7,8 +7,8 @@
 
 ## Quick Status
 
-**Current Phase:** 2a - Vision Encoder Extracted, Ready for Training
-**Last Updated:** 2026-02-10 (late afternoon)
+**Current Phase:** 2a - DEBUGGING (Model not using visual features)
+**Last Updated:** 2026-02-13
 
 - ✅ **Phase 1 Complete:** Vision encoder compression validated (10-20x for large files)
 - ✅ **Phase 1.5 Complete:** Embedding dimensions confirmed
@@ -19,21 +19,31 @@
   - 2,500 rendered code images (monokai, no line numbers)
   - 11,244 examples total → **10,119 train / 562 val / 563 test**
   - Manifests in `Data Crawling/output/manifests/{train,val,test}.jsonl`
-- ✅ **Phase 2a Implementation Complete:** Full training infrastructure built
-  - `coder_vl/projector.py` — Projection adapter (tested ✓)
-  - `coder_vl/model.py` — Token integration (<image> → 1120 visual tokens)
-  - `coder_vl/train_projector.py` — Training script (adapter-only, frozen models)
-  - `coder_vl/train_phase2a.sh` — SLURM job for dgxh100
-  - `coder_vl/extract_encoder.py` — Vision encoder extraction (in progress)
+- ✅ **Phase 2a Training Complete:** Successful convergence (job 222458)
+  - Final train loss: **1.40** (well below 3.0 threshold)
+  - Best val loss: **1.27** (step 550)
+  - Train-val gap: **0.14** (no overfitting)
+  - Checkpoint: `./checkpoints/phase2a/best.pt`
+- ❌ **Phase 2a Evaluation FAILED:** Model hallucinates, ignores visual features
+  - Quick eval (15 examples): G4=0.089, G5=0.0%, G6=0.136 (all FAIL)
+  - Model generates plausible text but doesn't read image content
+  - Example: Repeats same `__init__` signature instead of listing actual functions
+  - **Root cause:** Adapter not learning to map OCR-2 → Coder-V2 representation spaces
+
+**Debug Findings (2026-02-13):**
+- ✅ Visual features ARE diverse (cosine sim 0.19-0.66, GOOD)
+- ✅ Token replacement logic correct (training = evaluation)
+- ✅ Data format correct (`<img_start><image><img_end>`)
+- ❌ Model learned text patterns, not visual decoding
+- ❌ Projection adapter (2-layer MLP) insufficient for representation mapping
 
 **Next Steps:**
-1. Submit Phase 2a training: `sbatch coder_vl/train_phase2a.sh` (dgxh100, 1× H100, ~6-10 hours)
-2. Monitor training: `tail -f slurm-phase2a-*.out`
-   - Submit: `sbatch coder_vl/train_phase2a.sh`
-   - Monitor: `tail -f slurm-phase2a-*.out`
-3. Evaluate against Phase 2a gates (Section 8 in `PHASE2_PLAN.md`)
-4. If gates pass → proceed to Phase 2b (adapter + LoRA)
-5. If gates fail → debug, try architecture ablations (E04-E06)
+1. **Binary classification test** to verify pipeline can work at all
+   - Simpler task: "Does code contain class/function? Yes/No"
+   - If this works → adapter needs more capacity/training
+   - If this fails → architectural issue in token integration
+2. If binary test passes → increase adapter capacity or add attention supervision
+3. If binary test fails → investigate token attention mechanism
 
 ---
 
@@ -87,18 +97,24 @@ Code Image → SigLIP Vision Encoder (1280D) → Projection Adapter (1280D→204
 
 ### Rosie Supercomputer (SLURM)
 - **User account:** `gloriosog` (filesystem username - use this for `/scratch/` and `/data/` paths, not the full email)
-- **Python path:** Use `$HOME/DS OCR/envs/deepseek-ocr/bin/python` (not `conda activate`)
+- **Python environment:** `$HOME/DS OCR/envs/deepseek-ocr/` (conda env)
+  - **Python path:** `"$HOME/DS OCR/envs/deepseek-ocr/bin/python"` (use in scripts, not `conda activate`)
+  - **Pip path:** `"$HOME/DS OCR/envs/deepseek-ocr/bin/pip"` (for installing packages)
+  - Note: Quotes required due to space in "DS OCR"
+- **Required packages for 8-bit:** `accelerate`, `bitsandbytes` (must be installed in above environment)
 - **Partitions:** `teaching` (T4, 16GB), `dgx` (V100, 32GB), `dgxh100` (H100, 80GB)
-- **Phase 2 uses `dgxh100` exclusively** — V100 cannot hold both models simultaneously
+- **Phase 2a uses `dgx` with 8-bit quantization** — reduces 32GB model to ~8GB per GPU
 - **Storage:** Use `/scratch/gloriosog/` for data (no approval needed, large quota)
 - **Job scripts:** Use `.sh` files with `sbatch` command
 - **Max walltime:** 24 hours; use checkpoint + job chaining for longer runs
 - **Output files:** `slurm-{jobid}.out` and `slurm-{jobid}.err`
 
 ### Model Loading Patterns
-- **Memory constraints:** Can't load both vision encoder (26GB) + coder model (30GB) in 32GB V100
-- **Solution:** Load models separately, use `.cuda()` for GPU placement
-- **Avoid:** `device_map="auto"` (requires `accelerate` package)
+- **Memory constraints:** DeepSeek-Coder-V2-Lite (16B params) = ~32GB in bfloat16
+- **Solution for Phase 2a:** Use 8-bit quantization (`load_in_8bit=True`, `device_map="auto"`)
+  - Requires: `accelerate` and `bitsandbytes` packages
+  - Reduces VRAM: 32GB → ~8GB (frozen coder model only)
+  - Adapter trained in full precision (bfloat16)
 - **Pro tip:** Use `AutoConfig.from_pretrained()` to get model dimensions without loading weights (instant, <1MB memory)
 
 ### File Structure

@@ -13,11 +13,16 @@ checkpoints/
 models/
 
 ####################
-# SLURM job output #
+# Job / run outputs #
 ####################
 
 slurm-*.out
 slurm-*.err
+*.out
+*.err
+
+# Precomputed vision features (large, regeneratable)
+precomputed_features/
 
 ########################
 # Python build artifacts

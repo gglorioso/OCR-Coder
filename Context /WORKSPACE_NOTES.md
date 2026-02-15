@@ -1,6 +1,6 @@
 # DeepSeek-Coder-VL Workspace Notes
 
-*Last updated: 2026-02-10*
+*Last updated: 2026-02-12*
 
 ## Phase 1: Validation Complete ✅
 
@@ -155,19 +155,23 @@ Build and train the projection adapter that maps VL2 vision tokens → Coder-V2 
 - [x] Design the MLP projector architecture → **1280D → 4096D → 2048D (13.6M params)**
 - [x] Generate Phase 2a MVP training data (~11K examples total; 10,119 train / 562 val / 563 test) using `Data Crawling/simple_data_gen.sh` → manifests in `Data Crawling/output/manifests`
 - [x] **Implement the projection adapter module** → `coder_vl/projector.py` (13.6M params, tested ✓)
-- [x] **Implement model integration with token replacement** → `coder_vl/model.py` (LLaVA-style <image> → 1120 visual tokens)
-- [x] **Implement Phase 2a training script** → `coder_vl/train_projector.py` (adapter-only training, frozen vision encoder + coder)
-- [x] **Create SLURM job scripts** → `coder_vl/train_phase2a.sh` (dgxh100, 1× H100)
-- [x] **Create vision encoder extraction script** → `coder_vl/extract_encoder.py` (extracts SAM + Qwen2Decoder2Encoder + MlpProjector from DeepSeek-OCR-2)
-- [ ] **Extract vision encoder** → Run `coder_vl/extract_encoder.sh` to save standalone vision encoder (~1.5-2 GB) to `/data/gloriosog/models/vision_encoder.pt` (in progress)
-- [ ] Scale training data to 50K–100K examples on `/data` using the advanced pipeline (`ADVANCED_DATA_PIPELINE.md`)
-- [ ] Train projector Phase 2a (alignment pretraining)
+- [x] **Implement model integration with token replacement** → `coder_vl/model.py` (LLaVA-style <image> → visual tokens)
+- [x] **Create vision encoder extraction script** → `coder_vl/extract_encoder.py`
+- [x] **Extract vision encoder** → `./models/vision_encoder.pt` (0.85 GB, fp16, 454M params)
+- [x] **Simplify Phase 2a architecture** → Pre-computed features approach (2026-02-12, see notes below)
+- [x] **Create pre-compute script** → `coder_vl/precompute_features.py` + `precompute_features.sh`
+- [x] **Rewrite training script** → `coder_vl/train_projector.py` (simplified, no DDP/wandb/autocast)
+- [x] **Update SLURM job** → `coder_vl/train_phase2a.sh` (dgx, 1× V100)
+- [ ] **Run pre-compute job** → `sbatch coder_vl/precompute_features.sh` (saves [256, 1280] features per image)
+- [ ] **Run Phase 2a training** → `sbatch coder_vl/train_phase2a.sh` (after pre-compute completes)
 - [ ] Evaluate against Phase 2a gates (Section 8 in PHASE2_PLAN.md)
+- [ ] Scale training data to 50K–100K examples using advanced pipeline
 - [ ] Train projector Phase 2b (instruction tuning with LoRA)
 
-### Compute Requirements
-- 2× H100 GPUs
-- Estimated time: ~1 day for training
+### Compute Requirements (Updated 2026-02-12)
+- **Pre-compute:** 1× V100 (dgx), ~10-30 min — one-shot job
+- **Phase 2a training:** 1× V100 (dgx), ~8-12 hours — vision encoder NOT in VRAM
+- **Phase 2b training:** 1× H100 (dgxh100), ~12-18 hours — LoRA needs more headroom
 
 ---
 
@@ -238,21 +242,31 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Files Reference
 
-### Test Scripts
+### Phase 2a Scripts (Current)
+- `coder_vl/precompute_features.py` - Pre-compute vision features (one-shot) ✅ New
+- `coder_vl/precompute_features.sh` - SLURM job for pre-computation ✅ New
+- `coder_vl/train_projector.py` - Simplified adapter training (pre-computed features) ✅ Rewritten
+- `coder_vl/train_phase2a.sh` - SLURM job for training ✅ Updated
+- `coder_vl/projector.py` - Projection adapter module (unchanged)
+- `coder_vl/model.py` - CoderVL model integration (not used by simplified training, kept for future)
+- `coder_vl/extract_encoder.py` - Vision encoder extraction (already run)
+
+### Earlier Scripts
 - `test_phase1_compression.py` - Phase 1 validation script
 - `test_vision_models.py` - VLM benchmark script
 - `code_to_image.py` - Code → image converter
-- `DS Coder/inspect_embeddings_v2.py` - Vision + Coder dimension inspector (sequential loading)
-- `DS Coder/inspect_coder_embeddings.py` - Coder-only dimension inspector ✅ Current
+- `DS Coder/inspect_embeddings_v2.py` - Vision + Coder dimension inspector
+- `DS Coder/inspect_coder_embeddings.py` - Coder-only dimension inspector
 
 ### Output Files
 - `slurm-221532.out` - Phase 1 compression test results
-- `slurm-inspect-embeddings-221777.out` - First embedding inspection attempt (conda/accelerate issues)
-- `slurm-inspect-embeddings-221778.out` - Vision encoder inspection (successful, 1280D confirmed)
-- `slurm-inspect-coder-221827.out` - Coder model config inspection (successful, 2048D confirmed)
+- `slurm-inspect-embeddings-221778.out` - Vision encoder inspection (1280D confirmed)
+- `slurm-inspect-coder-221827.out` - Coder model config inspection (2048D confirmed)
+- `slurm-phase2a-222402.out` / `.err` - Phase 2a training attempt (dtype crash, see diagnosis above)
 
 ### Documentation
 - `DEEPSEEK_CODER_VL_PLAN.md` - Main project plan (updated with Phase 1 results)
+- `PHASE2_PLAN.md` - Phase 2 execution runbook
 - `PROJECT_PLAN.md` - Overall project tracking
 - `ROSIE_Commands_Reference.md` - Rosie supercomputer commands
 
@@ -260,29 +274,68 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-10):** Phase 2 implementation
+1. **✅ COMPLETED (2026-02-10):** Phase 2 initial implementation
    - ✅ Created `coder_vl/projector.py` — 13.6M parameter MLP (1280D→4096D→2048D), tested and verified
-   - ✅ Created `coder_vl/model.py` — LLaVA-style token integration (<image> → 1120 visual tokens)
-   - ✅ Created `coder_vl/train_projector.py` — Phase 2a training script (adapter-only, frozen encoder + coder)
-   - ✅ Created `coder_vl/train_phase2a.sh` — SLURM job for dgxh100 (1× H100, 24h walltime)
+   - ✅ Created `coder_vl/model.py` — LLaVA-style token integration (<image> → visual tokens)
    - ✅ Created `coder_vl/extract_encoder.py` — Vision encoder extraction from DeepSeek-OCR-2
-   - ✅ Fixed extraction script with correct attribute names (model.sam_model, model.qwen2_model, model.projector)
-   - ✅ Created `/pass` and `/prime` slash commands in `.claude/commands/`
-
-2. **✅ COMPLETED (2026-02-10):** Vision encoder extraction
-   - ✅ Fixed `/data` permission issues → all paths updated to project root (`./models/`, `./checkpoints/`)
    - ✅ Extracted vision encoder: `./models/vision_encoder.pt` (0.85 GB, fp16, 454M params)
-   - ✅ Optimized `/prime` and `/pass` commands (~70-80% token reduction)
 
-3. **Immediate (Next):** Run Phase 2a training
-   - Submit training job: `sbatch coder_vl/train_phase2a.sh`
-   - Monitor progress: `tail -f slurm-phase2a-*.out` (~6-10 hours on 1× H100)
-   - Checkpoints saved to `/data/gloriosog/checkpoints/phase2a/`
-   - Evaluate against Phase 2a gates (PHASE2_PLAN.md Section 8)
+2. **✅ COMPLETED (2026-02-12):** Phase 2a architecture simplification
+   - Job 222402 crashed on first batch — **not OOM, but a dtype mismatch** (see diagnosis below)
+   - Root cause: stacking 8-bit quantization + bf16 autocast + gradient checkpointing caused Float vs BFloat16 conflict in MoE routing layers
+   - **Decision: switch to pre-computed features approach**
+     - Vision encoder runs once offline, saves `[num_tokens, 1280]` tensors per image (~6.4 GB total for 2175 images)
+     - Training script only loads coder model (8-bit, ~8-10 GB) + adapter (55 MB) — no vision encoder in VRAM
+     - This enables V100 (dgx) for Phase 2a instead of requiring H100
+   - Removed: DDP, wandb, bf16 autocast, gradient checkpointing on frozen model
+   - Added: `torch_dtype=torch.float16` for coder model (keeps non-quantized MoE params in fp16, consistent with bitsandbytes)
+   - Added: `.half()` cast on adapter output before feeding to coder (prevents dtype mismatch)
+   - New files: `coder_vl/precompute_features.py`, `coder_vl/precompute_features.sh`
+   - Rewritten: `coder_vl/train_projector.py`, `coder_vl/train_phase2a.sh`
 
-4. **Medium-term:** Scale data and Phase 2b
+3. **✅ COMPLETED (2026-02-13):** Phase 2a training
+   - Job 222458 completed successfully (~9.3 hours on V100)
+   - Train loss: 1.40, Val loss: 1.27, Gap: 0.14 (all gates G1-G3 PASS)
+   - Checkpoint: `./checkpoints/phase2a/best.pt` (step 550)
+
+4. **❌ FAILED (2026-02-13):** Phase 2a evaluation — model not using visual features
+   - Quick eval (15 examples, job 222733): All gates failed (G4=0.089, G5=0%, G6=0.136)
+   - **Critical issue:** Model hallucinates instead of reading image content
+     - Example: Asked to list functions → repeats same `__init__` signature 5+ times
+     - Functions are hallucinated, not from actual code in image
+   - **Debugging performed:**
+     - ✅ Visual features ARE diverse (cosine similarity 0.19-0.66 between images)
+     - ✅ Token replacement logic matches training/evaluation
+     - ✅ Data format correct (`<img_start><image><img_end>`)
+     - ✅ Base model (untrained) gives reasonable response ("need to see code")
+     - ❌ Trained model learned text patterns but NOT visual decoding
+   - **Root cause:** 2-layer MLP adapter insufficient to map OCR-2 (1280D) → Coder-V2 (2048D) representation spaces
+     - Model minimizes loss by learning common text patterns from training distribution
+     - Ignores visual tokens entirely (easier to hallucinate than decode)
+   - **Files created for debugging:**
+     - `coder_vl/debug_single_example.py` — traces single example through model
+     - `coder_vl/test_no_image.py` — tests generation without visual features
+     - `coder_vl/check_feature_diversity.py` — verifies features are distinct
+
+5. **✅ COMPLETED (2026-02-14):** Test 1: Perfect Features Experiment
+   - **Result:** Token insertion mechanism works correctly ✓
+   - **Finding:** Projection adapter too weak to map OCR-2 → Coder space
+   - **Conclusion:** Architecture is fine, problem is representation space mismatch
+   - See detailed findings in "Test 1: Perfect Features Experiment" section below
+
+6. **🔧 NEXT (2026-02-14):** Fix projection bottleneck
+   - **Option 1 (RECOMMENDED):** Switch to SigLIP/CLIP vision encoder
+     - Better language alignment than OCR-2 (document-focused)
+     - Same 2-layer MLP might work with better source features
+   - **Option 2:** Stronger adapter architecture
+     - Add attention layers, deeper MLP, or cross-attention
+     - More complex but keeps OCR-2 encoder
+   - **Option 3:** Add contrastive loss during training
+     - Force alignment between visual and text spaces
+
+7. **Medium-term:** Scale data and Phase 2b
    - Scale training data to 50K–100K examples using advanced pipeline
-   - If Phase 2a gates pass → proceed to Phase 2b (adapter + LoRA)
+   - If Phase 2a gates pass → proceed to Phase 2b (adapter + LoRA on H100)
    - Phase 2b: Instruction fine-tuning (~12–18 hours on H100)
 
 5. **Future:** Evaluate Sniper method in Phase 4
@@ -292,6 +345,43 @@ A three-phase hybrid workflow combining vision and text:
 ---
 
 ## Notes & Observations
+
+### Phase 2a — Job 222402 Diagnosis (2026-02-12)
+
+**Job ID:** 222402 | **Node:** dh-dgx1-1 | **GPU:** V100-SXM2-32GB | **Partition:** dgx
+
+**What happened:** Everything loaded successfully (vision encoder, coder model 8-bit, adapter 13.6M, datasets 10K). Training started but crashed on the **very first forward pass**.
+
+**The error (NOT OOM):**
+```
+RuntimeError: Index put requires the source and destination dtypes match,
+got Float for the destination and BFloat16 for the source.
+```
+Location: MoE routing in DeepSeek-Coder-V2-Lite (`modeling_deepseek.py` line 580):
+```python
+y[flat_topk_idx == i] = expert(hidden_states[flat_topk_idx == i])
+```
+
+**Root cause — three precision tricks conflicting:**
+1. `load_in_8bit=True` — bitsandbytes casts weights to int8, activations to fp16/fp32
+2. `torch.autocast(dtype=torch.bfloat16)` — forces ops into bf16
+3. Gradient checkpointing on frozen model — recomputes forward in mixed precision
+
+The MoE routing allocates `y` in float32, but experts under bf16 autocast return bfloat16. PyTorch refuses the assignment.
+
+**Additional complexity problems identified:**
+- Vision encoder loading from state_dict requires re-downloading full 26GB DeepSeek-OCR-2 model at training time (defeats the purpose of extraction)
+- DDP/distributed code was dead weight (single-GPU run)
+- WandB failed every time (no API key)
+- Gradient checkpointing on frozen model had no benefit (only adapter trains)
+
+**Solution: Pre-computed features approach**
+- Separate vision encoding (one-shot) from adapter training
+- Remove autocast, gradient checkpointing, DDP, wandb
+- Load coder with `torch_dtype=torch.float16` (consistent precision for MoE)
+- Cast adapter output to fp16 via `.half()` before coder model
+- Use fixed 256 tokens per image (base view, no tiling) for Phase 2a simplicity
+- V100 now viable: ~8-10 GB coder (8-bit) + ~55 MB adapter + ~3-5 GB activations = ~13-17 GB
 
 ### Phase 1
 - Phase 1 validation exceeded all expectations - compression ratios of 10-20x for large files
@@ -308,6 +398,80 @@ A three-phase hybrid workflow combining vision and text:
 - Key learning: Don't load full model weights when you only need architecture info
 - The projection adapter is very lightweight: 13.6M parameters (vs 400M vision encoder, 16B coder model)
 - Completed in 4 seconds - much faster than loading full models
+
+---
+
+### Phase 2a — Job 222453: Training Works, Eval Crashes on Missing Features (2026-02-12)
+
+**Job ID:** 222453 | **Node:** dh-dgx1-1 | **Duration:** ~43 min before crash
+
+**Good news:** Training ran successfully. Loss dropped from ~2.18 → ~1.81 over 199 batches (steps 1–50). 4-bit quantization + gradient checkpointing + `coder.train()` fixed prior OOM and dtype issues.
+
+**Crash:** At step 50, the eval loop kicked in. A validation example references `convert_slow_tokenizer_monokai.png` — the decompression bomb image that failed during pre-computation (job 222445). The dataset has 2 missing features in val, 3 in train. When eval hit that example:
+```
+KeyError: '.../convert_slow_tokenizer_monokai.png'
+```
+at `PrecomputedDataset.__getitem__` line 87: `features = self._cache[ex["image"]]`.
+
+**Fix needed:** Filter out examples with missing features during dataset initialization (in `PrecomputedDataset.__init__`), instead of crashing at lookup time. ~3-line change: after loading manifest, filter `self.examples` to only include examples whose `ex["image"]` has a corresponding `.pt` file in `features_dir`.
+
+---
+
+### Test 1: Perfect Features Experiment ✅ (2026-02-14)
+
+**Goal:** Diagnose whether token insertion mechanism works when visual features are in the correct representation space.
+
+**Approach:**
+- Instead of using OCR-2 vision encoder features (1280D, document understanding space)
+- Use Coder model's own text embeddings (2048D, code understanding space) as "visual" features
+- If token insertion works → problem is the projection adapter
+- If token insertion fails → problem is the architecture
+
+**Implementation:**
+- Created `coder_vl/test_perfect_features_quick.py` — inference-only test (no training)
+- Tokenizes ground truth answer → gets embeddings → inserts as "visual" tokens
+- Uses manual autoregressive generation (`.generate()` doesn't handle `inputs_embeds` well)
+- Tests 5 examples in ~10 minutes on V100
+
+**Results:** ✅ **Test PASSED** — Token insertion mechanism works correctly
+
+Example outputs:
+- **Example 2:** "What modules does this code import?"
+  - Model correctly listed: itertools, math, matplotlib, numpy, scipy, sklearn.base, etc.
+  - ✓ Model read the "visual" features and extracted correct information
+
+- **Example 4:** "What are the function signatures?"
+  - Model correctly listed: `def grep()`, `def walk_error()`, `def findfiles()`, etc.
+  - ✓ Model used visual tokens to answer accurately
+
+**Conclusion:**
+- ✅ **Token insertion architecture is correct** — Model CAN use visual tokens when they're in the right space
+- ❌ **Projection adapter is too weak** — 2-layer MLP cannot map OCR-2 space → Coder space effectively
+- The problem is NOT the token replacement logic, attention masks, or integration mechanism
+- The problem IS that OCR-2 features (document understanding) and Coder features (code understanding) live in fundamentally different semantic spaces, and the simple MLP cannot bridge them
+
+**The gap:**
+```
+OCR-2 features:     "Text arranged in rows/columns, document layout"
+                    ↓ [2-layer MLP, 13.6M params]
+                    ↓ [Too weak to map semantic spaces]
+Coder features:     "Python code, functions, imports, logic"
+```
+
+**Next steps (in priority order):**
+1. **Better vision encoder** — Switch to SigLIP/CLIP (better language alignment than OCR-2)
+2. **Stronger adapter** — Add attention layers, deeper MLP, or cross-attention mechanism
+3. **Add supervision** — Contrastive loss to align visual/text spaces during training
+
+**Files created:**
+- `coder_vl/test_perfect_features_quick.py` — Quick inference test (10 min)
+- `coder_vl/test_perfect_features_quick.sh` — SLURM script
+- `coder_vl/test_perfect_features.py` — Full training script (if needed)
+- `coder_vl/eval_perfect_features.py` — Evaluation script
+- `Context/TEST1_PERFECT_FEATURES.md` — Full documentation
+
+**Job IDs:**
+- 222793 — Test 1 quick inference (successful, 3 min runtime)
 
 ---
 

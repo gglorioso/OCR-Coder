@@ -1,6 +1,6 @@
 # Phase 2 Plan - DeepSeek-Coder-VL Adapter
 
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-12*
 *Owner: Grant Glorioso*
 *Purpose: Single source of truth for Phase 2 execution decisions, constraints, experiments, and cross-instance comparisons.*
 
@@ -45,13 +45,15 @@ Docs: https://docs.hpc.msoe.edu/#/
 
 | Phase | Minimum GPU | Partition | Request |
 |-------|-------------|-----------|---------|
-| Phase 2a (adapter only) | 1× H100 (80 GB) | `dgxh100` | `--partition=dgxh100 --gpus=1 --cpus-per-gpu=16` |
+| Phase 2a pre-compute | 1× V100 (32 GB) | `dgx` | `--partition=dgx --gpus=1 --cpus-per-gpu=8` |
+| Phase 2a training | 1× V100 (32 GB) | `dgx` | `--partition=dgx --gpus=1 --cpus-per-gpu=8` |
 | Phase 2b (adapter + LoRA) | 1× H100 (80 GB) | `dgxh100` | `--partition=dgxh100 --gpus=1 --cpus-per-gpu=16` |
-| Phase 2b (faster, optional) | 2× H100 | `dgxh100` | `--partition=dgxh100 --gpus=2 --cpus-per-gpu=16` |
 
-**V100 (dgx) is NOT viable for Phase 2** — both models must be loaded simultaneously (~31 GB vision encoder + coder model weights alone exceeds 32 GB V100 VRAM). Phase 1 only loaded one model at a time.
+**V100 (dgx) IS viable for Phase 2a** (updated 2026-02-12) — with the pre-computed features approach, the vision encoder is NOT loaded during training. Only the 8-bit coder model (~8-10 GB) + adapter (~55 MB) + activations (~3-5 GB) are needed, totaling ~13-17 GB on a 32 GB V100.
 
-**T4 (teaching) is NOT viable** — 16 GB is insufficient for any model component except the adapter.
+**V100 is NOT viable for Phase 2b** — LoRA adds optimizer states and more activation memory. H100 required.
+
+**T4 (teaching) is NOT viable** — 16 GB is insufficient for the 8-bit coder model plus training activations.
 
 ### Pre-Run Checklist (Verify Before Each New Run Window)
 
@@ -157,32 +159,43 @@ Complete Phase 2a and validate against quantitative gates (Section 8) before sta
 
 Based on the LLaVA-1.5 training recipe (Liu et al., 2023), adapted for our architecture and hardware.
 
-### Phase 2a Config
+### Phase 2a Config (Updated 2026-02-12 — Pre-computed Features Approach)
 
 ```yaml
 # Phase 2a: Alignment Pretraining (adapter only)
+# Uses pre-computed vision features — no vision encoder in VRAM during training
 trainable_params: adapter_only  # 13.6M params
-frozen: [vision_encoder, coder_model]
+frozen: coder_model             # 8-bit quantized, fp16 non-quantized params
+vision_features: pre-computed   # [256, 1280] per image, loaded from disk
 
 optimizer: AdamW
 learning_rate: 1e-3          # Aggressive LR is safe — only adapter weights update
 lr_schedule: cosine
-warmup_ratio: 0.03           # ~47 warmup steps at 1,562 total steps
+warmup_ratio: 0.03
 weight_decay: 0.0            # LLaVA uses 0 for stage 1
 
-batch_size_per_gpu: 8        # Per-GPU batch size
-gradient_accumulation_steps: 4  # Effective batch size = 32
-epochs: 1                    # Single pass over 50K examples → ~1,562 steps
+batch_size_per_gpu: 4        # Per-GPU batch size (V100 memory budget)
+gradient_accumulation_steps: 4  # Effective batch size = 16
+epochs: 1                    # Single pass over 10K examples → ~632 steps
 
-precision: bf16              # H100 natively supports bf16
-gradient_checkpointing: true # Saves ~40% activation memory
-max_seq_length: 2048         # 1,120 visual + ~900 text tokens
+precision: fp16              # Coder loaded with torch_dtype=float16 + 8-bit quant
+gradient_checkpointing: false # NOT USED — frozen model, no benefit; caused dtype conflicts
+autocast: false              # NOT USED — 8-bit handles precision internally
+max_seq_length: 2048         # 256 visual + ~1800 text tokens
 
-checkpoint_interval_minutes: 30  # Save every 30 min (walltime safety)
-eval_steps: 50                   # Evaluate every 50 steps
+eval_steps: 50               # Evaluate every 50 optimizer steps
+log_steps: 10                # Print loss every 10 optimizer steps
 ```
 
-**Estimated time:** ~6–10 hours on 1× H100 (50K examples; fits in 24h walltime)
+**Key simplifications vs previous attempt (job 222402):**
+- No `torch.autocast` — was causing Float vs BFloat16 mismatch in MoE routing
+- No gradient checkpointing on frozen model — no benefit, contributed to dtype conflicts
+- No DDP/distributed code — single GPU only
+- No wandb — print-based logging only
+- No vision encoder in VRAM — features pre-computed to disk
+- Adapter output cast to fp16 via `.half()` before entering coder model
+
+**Estimated time:** ~8–12 hours on 1× V100 (10K examples; fits in 24h walltime)
 
 ### Phase 2b Config
 
@@ -255,18 +268,22 @@ Extracted vision encoder in bf16: **~1.5–2 GB** (SAM ~0.8 GB + Qwen2Decoder2En
 
 **Implementation:** `coder_vl/extract_encoder.py` — loads full DeepSeek-OCR-2, saves only vision components as a standalone `torch.nn.Module`, verifies output shape matches Phase 1 results `[batch, 256, 1280]` per tile.
 
-### Phase 2a: Adapter Only (1× H100, 80 GB)
+### Phase 2a: Adapter Only — Pre-computed Features (1× V100, 32 GB)
 
-| Component | VRAM (bf16) | Notes |
-|-----------|-------------|-------|
-| Vision encoder (extracted, frozen) | ~2 GB | SAM + Qwen2Dec2Enc + MlpProj, inference only |
-| Coder model (frozen, inference) | ~30 GB | 16B params × 2 bytes, no gradients |
-| Adapter weights | ~0.03 GB | 13.6M params × 2 bytes |
-| Adapter optimizer states (AdamW) | ~0.1 GB | 2× param + momentum + variance |
-| Adapter gradients | ~0.03 GB | Same size as weights |
-| Activations (batch=8, seq=2048, grad ckpt) | ~8 GB | With gradient checkpointing |
-| PyTorch overhead / fragmentation | ~3 GB | CUDA allocator overhead |
-| **Total** | **~43 GB** | **Fits in 80 GB with 37 GB headroom** |
+*Updated 2026-02-12: Switched to pre-computed features approach. Vision encoder is NOT loaded during training.*
+
+| Component | VRAM | Notes |
+|-----------|------|-------|
+| Coder model (8-bit quantized, frozen) | ~8-10 GB | 16B params in int8 + overhead, `device_map="auto"` |
+| Adapter weights (fp32) | ~0.055 GB | 13.6M params × 4 bytes (full precision for training stability) |
+| Adapter optimizer states (AdamW) | ~0.22 GB | 2× fp32 copies (momentum + variance) |
+| Adapter gradients | ~0.055 GB | Same size as weights |
+| Activations (batch=4, seq≈2304) | ~3-5 GB | 27 layers, no grad checkpointing; grads flow through frozen coder for adapter backprop |
+| Pre-computed features (CPU cache) | 0 GB VRAM | ~1.4 GB CPU RAM for 2175 images; batch loaded to GPU on demand |
+| PyTorch overhead / fragmentation | ~2-3 GB | CUDA allocator overhead |
+| **Total** | **~13-18 GB** | **Fits in 32 GB V100 with ~14-19 GB headroom** |
+
+**Why V100 works now:** The vision encoder (~0.85 GB) is never loaded during training. Pre-computed features are cached in CPU memory and only a batch at a time moves to GPU. The 8-bit coder model is the dominant VRAM consumer.
 
 ### Phase 2b: Adapter + LoRA (1× H100, 80 GB)
 
@@ -281,19 +298,23 @@ Extracted vision encoder in bf16: **~1.5–2 GB** (SAM ~0.8 GB + Qwen2Decoder2En
 | PyTorch overhead / fragmentation | ~3 GB | |
 | **Total** | **~44 GB** | **Fits in 80 GB with 36 GB headroom** |
 
-### V100 Feasibility: NOT VIABLE
+### V100 Feasibility: VIABLE FOR PHASE 2a (Updated 2026-02-12)
 
-| Component | VRAM (bf16) |
-|-----------|-------------|
-| Vision encoder | ~0.8 GB |
-| Coder model | ~30 GB |
-| **Subtotal (weights only)** | **~31 GB** |
+With pre-computed features, the vision encoder is not loaded during training:
+
+| Component | VRAM |
+|-----------|------|
+| Coder model (8-bit) | ~8-10 GB |
+| Adapter + optimizer + gradients | ~0.33 GB |
+| Activations | ~3-5 GB |
+| Overhead | ~2-3 GB |
+| **Total** | **~13-18 GB** |
 | V100 capacity | 32 GB |
-| **Remaining for training** | **~1 GB ❌** |
+| **Remaining headroom** | **~14-19 GB ✅** |
 
-Both models cannot coexist on a single V100. Multi-GPU V100 would require model parallelism (DeepSpeed Stage 3 or tensor parallelism), adding significant complexity for no benefit when H100s are available.
+**Decision (updated): Use `dgx` (V100) for Phase 2a. Reserve `dgxh100` (H100) for Phase 2b (LoRA).**
 
-**Decision: Use `dgxh100` partition exclusively for Phase 2.**
+*Previous assessment (2026-02-09) that V100 was not viable assumed both vision encoder + coder model loaded simultaneously. The pre-computed features approach eliminates this constraint.*
 
 ---
 
@@ -530,6 +551,8 @@ Record each model/agent recommendation and outcome here.
 | E06 | 2026-02-09 | Claude (critique) | Smaller hidden dim (1280→2048→2048, 6.8M params) | Test minimum viable capacity | Pending | TBD |
 | E07 | 2026-02-09 | Claude (critique) | LoRA r=16, attention-only (not r=64 all-layers) | MoE-safe LoRA; avoid per-expert param explosion | Pending | TBD |
 | E08 | 2026-02-09 | Claude (critique) | LLaVA-style placeholder token replacement | Standard VLM integration, compatible with MLA | Pending | TBD |
+| E09 | 2026-02-12 | Cursor (Claude) | Pre-computed features: run vision encoder offline, train adapter with features from disk | Removes vision encoder from training VRAM; enables V100; fixes dtype mismatch | Pending | TBD |
+| E10 | 2026-02-12 | Cursor (Claude) | Fixed 256 tokens/image (base view, no tiling) | Simplifies batching; sufficient for Phase 2a alignment; tiling for Phase 2b | Pending | TBD |
 
 ### Recording Results
 
@@ -590,30 +613,33 @@ These are non-blocking but should be resolved before Phase 2b:
 
 ## 14) Implementation Order
 
-1. **Pre-work (before any training):**
-   - [ ] Implement `coder_vl/extract_encoder.py` — extract vision encoder from DeepSeek-OCR-2, discard language decoder, save standalone module (see Section 6)
-   - [ ] Pre-cache extracted encoder + coder model weights on `/data`
-   - [ ] Verify `dgxh100` access with a quick `nvidia-smi` test
-   - [ ] Confirm MLA module names for LoRA targeting
-   - [ ] Implement `coder_vl/projector.py` (adapter module)
-   - [ ] Implement `coder_vl/model.py` (combined forward pass with token integration)
-   - [ ] Write a unit test: random image → encoder → adapter → verify output shape [batch, N_vis, 2048]
+1. **Pre-work:** ✅ COMPLETE
+   - [x] Implement `coder_vl/extract_encoder.py` — extract vision encoder from DeepSeek-OCR-2
+   - [x] Extract vision encoder → `./models/vision_encoder.pt` (0.85 GB, fp16, 454M params)
+   - [x] Implement `coder_vl/projector.py` (adapter module, 13.6M params, tested)
+   - [x] Implement `coder_vl/model.py` (combined forward pass with token integration)
+   - [ ] Confirm MLA module names for LoRA targeting (needed for Phase 2b, not blocking)
 
-2. **Data generation (can overlap with implementation):**
-   - [ ] Clone top 50–100 Python repos by stars
-   - [ ] Collect Python files across size distribution (50–2500 lines, ~10K–20K files)
-   - [ ] Render to images with `code_to_image.py` (no line numbers, see Section 7.5)
-   - [ ] Generate Phase 2a labels via AST parsing (50K–100K examples, automated — Section 7.1)
-   - [ ] Generate Phase 2b labels (50K instruction examples, mixed tasks — self-distillation with coder model on Rosie, or DeepSeek API)
-   - [ ] Create repo-level train/val/test splits
+2. **Data generation:** ✅ MVP COMPLETE (scaling pending)
+   - [x] Clone top repos, collect Python files
+   - [x] Render 2,500 code images (monokai, no line numbers)
+   - [x] Generate Phase 2a labels via AST parsing → 11,244 examples (10,119 train / 562 val / 563 test)
+   - [ ] Scale to 50K–100K examples using advanced pipeline (for Phase 2b)
+   - [ ] Generate Phase 2b instruction-following labels
 
-3. **Phase 2a training:**
-   - [ ] Run E03 (baseline adapter) on `dgxh100`
+3. **Phase 2a training:** IN PROGRESS (updated 2026-02-12)
+   - [x] First attempt (job 222402) — identified dtype mismatch crash in MoE routing
+   - [x] Simplified architecture: pre-computed features approach
+   - [x] Created `coder_vl/precompute_features.py` + `.sh` (pre-compute [256, 1280] per image)
+   - [x] Rewrote `coder_vl/train_projector.py` (no DDP/wandb/autocast/grad-ckpt)
+   - [x] Updated `coder_vl/train_phase2a.sh` (dgx V100 instead of dgxh100 H100)
+   - [ ] **Run pre-compute:** `sbatch coder_vl/precompute_features.sh`
+   - [ ] **Run training:** `sbatch coder_vl/train_phase2a.sh`
    - [ ] Evaluate against Phase 2a gates (Section 8)
    - [ ] If gates fail: debug, then try E04/E05/E06
 
 4. **Phase 2b training (only after Phase 2a gates pass):**
-   - [ ] Run Phase 2b with E03 adapter + LoRA r=16
+   - [ ] Run Phase 2b with E03 adapter + LoRA r=16 on H100
    - [ ] Evaluate against Phase 2b gates (Section 8)
    - [ ] If G10 (text preservation) fails: increase replay ratio to 35%
 
@@ -638,3 +664,13 @@ These are non-blocking but should be resolved before Phase 2b:
    - Fixed extraction with correct DeepSeek-OCR-2 attribute paths (model.sam_model, model.qwen2_model, model.projector)
    - Created project-specific slash commands (`.claude/commands/pass.md`, `.claude/commands/prime.md`) for session handoff and context bootstrapping
    - Ready to run: vision encoder extraction in progress, Phase 2a training script ready for H100
+ - 2026-02-12: **Phase 2a simplification — pre-computed features approach.** Job 222402 crashed on first batch due to dtype mismatch (Float vs BFloat16) in MoE routing layers caused by stacking 8-bit quantization + bf16 autocast + gradient checkpointing. Root cause analysis led to major architecture simplification:
+   - **New approach:** Pre-compute vision features offline ([256, 1280] per image, ~6.4 GB total), train adapter using only coder model (8-bit) + adapter — no vision encoder in VRAM during training
+   - **V100 now viable for Phase 2a** — updated partition from dgxh100 to dgx; memory budget ~13-18 GB out of 32 GB
+   - Removed: DDP, wandb, bf16 autocast, gradient checkpointing on frozen model
+   - Added: `torch_dtype=torch.float16` for consistent MoE precision, `.half()` cast on adapter output
+   - New files: `coder_vl/precompute_features.py`, `coder_vl/precompute_features.sh`
+   - Rewritten: `coder_vl/train_projector.py` (flat, self-contained, ~280 lines)
+   - Updated: `coder_vl/train_phase2a.sh` (dgx, single V100)
+   - Run order: (1) `sbatch precompute_features.sh` then (2) `sbatch train_phase2a.sh`
+ - 2026-02-13: **Phase 2a training successful + evaluation infrastructure.** Job 222458 completed in 9.3 hrs with train loss 1.40, val loss 1.27 (gates G1-G3 PASS). Built evaluation script (`coder_vl/evaluate_phase2a.py`) for gates G4/G5/G6; fixed generation with KV caching (7.5x speedup, 42s/example). Job 222725 running (ETA ~6.5hrs, may need 8hr walltime).
