@@ -23,7 +23,24 @@ Or infer from conversation if obvious.
 
 **Use codebase_search to locate sections, then use targeted Edit calls - do NOT read full files before editing**
 
-## 3. Emit Ultra-Brief Handoff
+## 3. Commit and Push Changes
+
+After updating documentation:
+```bash
+# Check if there are changes to commit
+git status --short
+# If changes exist, commit with descriptive message
+git add "Context /" .claude/commands/ .cursor/commands/ 2>/dev/null
+git commit -m "docs: Update project status and documentation
+
+- Update Context/claude.md with latest status
+- Update Context/WORKSPACE_NOTES.md with progress
+- Update Context/PHASE2_PLAN.md changelog" 2>/dev/null || true
+# Push to remote
+git push 2>/dev/null || echo "Note: Push failed or no changes to push"
+```
+
+## 4. Emit Ultra-Brief Handoff
 
 Return terse handoff (max 8 lines):
 

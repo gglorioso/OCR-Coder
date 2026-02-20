@@ -10,6 +10,8 @@ Use codebase_search to find and read:
 ls models/vision_encoder.pt 2>/dev/null && echo "✓ Vision encoder ready" || echo "✗ Vision encoder missing"
 ls -d coder_vl/ 2>/dev/null && echo "✓ Implementation exists" || echo "✗ Implementation missing"
 ls Data\ Crawling/output/manifests/*.jsonl 2>/dev/null | wc -l | xargs -I{} echo "✓ {} manifest files"
+# Check git status (informational only)
+git status --short 2>/dev/null | head -5 || echo "Note: Check git status manually"
 ```
 
 ## 3. Output (Brief)
