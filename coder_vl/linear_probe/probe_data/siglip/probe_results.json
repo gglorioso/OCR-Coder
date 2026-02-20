@@ -1,0 +1,60 @@
+{
+  "has_class": {
+    "accuracy": 0.7921,
+    "baseline": 0.6744,
+    "f1": 0.851,
+    "above_baseline": 0.1178
+  },
+  "has_function": {
+    "accuracy": 0.8406,
+    "baseline": 0.8522,
+    "f1": 0.9121,
+    "above_baseline": -0.0115
+  },
+  "has_imports": {
+    "accuracy": 0.9007,
+    "baseline": 0.903,
+    "f1": 0.9475,
+    "above_baseline": -0.0023
+  },
+  "has_many_functions": {
+    "accuracy": 0.7898,
+    "baseline": 0.5589,
+    "f1": 0.8233,
+    "above_baseline": 0.2309
+  },
+  "is_large_file": {
+    "accuracy": 0.9723,
+    "baseline": 0.6282,
+    "f1": 0.963,
+    "above_baseline": 0.3441
+  },
+  "file_size_bucket": {
+    "accuracy": 0.94,
+    "baseline": 0.4573,
+    "above_baseline": 0.4827
+  },
+  "function_count_bucket": {
+    "accuracy": 0.6443,
+    "baseline": 0.3233,
+    "above_baseline": 0.321
+  },
+  "num_functions": {
+    "mse": 0.4964,
+    "r2": 0.5077,
+    "mean_target": 10.41,
+    "std_target": 7.92
+  },
+  "num_classes": {
+    "mse": 0.462,
+    "r2": 0.439,
+    "mean_target": 3.81,
+    "std_target": 5.66
+  },
+  "num_imports": {
+    "mse": 0.4101,
+    "r2": 0.5408,
+    "mean_target": 8.8,
+    "std_target": 7.01
+  }
+}
