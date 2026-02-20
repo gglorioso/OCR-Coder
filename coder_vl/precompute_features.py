@@ -6,11 +6,16 @@ images and saves the output tensors to disk.  This means the training script
 never needs to load the vision encoder at all — saving ~1-2 GB VRAM and
 removing a major source of complexity.
 
-Each image produces a fixed [num_tokens, 1280] tensor (expected: 256 tokens
-for 768x768 input with base view, no tiling).
+Base mode (--tiling not set):
+    Each image → [256, 1280] tensor  (single 768x768 view, 88:1 compression)
+
+Tiling mode (--tiling):
+    Each image → [1280, 1280] tensor (2x2 grid + full thumbnail = 5 views,
+    each 768x768 → 256 tokens, concatenated → 1280 tokens, ~20:1 compression)
 
 Usage:
     python precompute_features.py --output_dir ./precomputed_features
+    python precompute_features.py --output_dir ./precomputed_features_tiled --tiling
 """
 
 import gc
@@ -69,6 +74,29 @@ def get_transform(image_size=768):
     ])
 
 
+def tile_image(pil_image, image_size=768):
+    """
+    Split image into a 2x2 grid of crops + the full image (thumbnail).
+
+    Each of the 5 resulting PIL Images is sized image_size/2 x image_size/2
+    (for the crops) or image_size x image_size (for the thumbnail).  The
+    caller's transform will resize all of them to image_size x image_size
+    before encoding, so each produces the same number of tokens (256) as a
+    base-view image.
+
+    Total tokens after encoding all 5 tiles: 5 x 256 = 1280.
+    """
+    img = pil_image.resize((image_size, image_size), Image.LANCZOS)
+    half = image_size // 2
+    return [
+        img.crop((0,    0,    half,       half)),        # top-left
+        img.crop((half, 0,    image_size, half)),        # top-right
+        img.crop((0,    half, half,       image_size)),  # bottom-left
+        img.crop((half, half, image_size, image_size)),  # bottom-right
+        img,                                             # full thumbnail
+    ]
+
+
 def collect_unique_images(*manifest_paths):
     """Return sorted list of unique image paths across all manifest files."""
     image_paths = set()
@@ -96,6 +124,8 @@ def main():
                         default="deepseek-ai/deepseek-ocr-2",
                         help="HuggingFace model ID for DeepSeek-OCR-2")
     parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--tiling", action="store_true",
+                        help="Enable 2x2 tiling + thumbnail (5 views, 1280 tokens vs 256)")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -116,7 +146,8 @@ def main():
     transform = get_transform(args.image_size)
 
     # ---- Process all images ----
-    print(f"\nEncoding images at {args.image_size}x{args.image_size} ...")
+    mode = "tiling (2x2 + thumbnail, ~1280 tokens)" if args.tiling else f"base ({args.image_size}x{args.image_size}, ~256 tokens)"
+    print(f"\nEncoding images — mode: {mode}")
     token_counts = {}
     errors = []
     expected_shape = None
@@ -124,12 +155,22 @@ def main():
     for i, img_path in enumerate(tqdm(image_paths, desc="Encoding")):
         try:
             image = Image.open(img_path).convert("RGB")
-            tensor = transform(image).unsqueeze(0).to(args.device).half()
 
-            with torch.no_grad():
-                features = proj(d2e(sam(tensor)))  # [1, num_tokens, 1280]
+            if args.tiling:
+                tiles = tile_image(image, args.image_size)
+                tile_features = []
+                for tile in tiles:
+                    tensor = transform(tile).unsqueeze(0).to(args.device).half()
+                    with torch.no_grad():
+                        feat = proj(d2e(sam(tensor)))  # [1, 256, 1280]
+                    tile_features.append(feat.squeeze(0).cpu())
+                features = torch.cat(tile_features, dim=0)  # [1280, 1280]
+            else:
+                tensor = transform(image).unsqueeze(0).to(args.device).half()
+                with torch.no_grad():
+                    features = proj(d2e(sam(tensor)))  # [1, num_tokens, 1280]
+                features = features.squeeze(0).cpu()
 
-            features = features.squeeze(0).cpu()  # [num_tokens, 1280]
             num_tokens = features.size(0)
 
             # Track token counts

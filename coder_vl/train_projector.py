@@ -21,7 +21,9 @@ import argparse
 from pathlib import Path
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import Dataset, DataLoader, DistributedSampler
 from torch.optim import AdamW
 from transformers import (
     AutoTokenizer,
@@ -274,16 +276,39 @@ def main():
     parser.add_argument("--checkpoint_dir", default="./checkpoints/phase2a")
     parser.add_argument("--eval_steps", type=int, default=50)
     parser.add_argument("--log_steps", type=int, default=10)
+    parser.add_argument(
+        "--init_from",
+        default=None,
+        help="Path to adapter checkpoint from contrastive pre-training "
+             "(e.g. ./checkpoints/contrastive/best.pt). Default: random init.",
+    )
     args = parser.parse_args()
 
-    device = "cuda"
+    # ==================================================================
+    # 0.  Distributed setup (works with torchrun; falls back to 1 GPU)
+    # ==================================================================
+    is_distributed = int(os.environ.get("WORLD_SIZE", 1)) > 1
+    if is_distributed:
+        dist.init_process_group("nccl")
+        local_rank = int(os.environ["LOCAL_RANK"])
+        world_size  = dist.get_world_size()
+        rank        = dist.get_rank()
+    else:
+        local_rank = 0
+        world_size = 1
+        rank       = 0
+
+    torch.cuda.set_device(local_rank)
+    device  = f"cuda:{local_rank}"
+    is_main = (rank == 0)
 
     # ==================================================================
     # 1.  Load coder model  (8-bit quantized, frozen, fp16 non-quant params)
     # ==================================================================
-    print("=" * 60)
-    print("LOADING CODER MODEL (4-bit, fp16)")
-    print("=" * 60)
+    if is_main:
+        print("=" * 60)
+        print("LOADING CODER MODEL (4-bit, fp16)")
+        print("=" * 60)
 
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -293,7 +318,7 @@ def main():
         args.coder_model,
         quantization_config=bnb_config,
         torch_dtype=torch.float16,       # keeps non-quantized params in fp16
-        device_map="auto",
+        device_map={"": local_rank},     # full copy on this GPU (no pipeline conflict)
         trust_remote_code=True,
     )
     tokenizer = AutoTokenizer.from_pretrained(
@@ -319,25 +344,44 @@ def main():
     # Safe because instruction-tuned models have dropout=0.0 (train/eval behave identically).
     coder.gradient_checkpointing_enable()
     coder.train()
-    print("  Gradient checkpointing enabled (train mode for activation)")
+    if is_main:
+        print("  Gradient checkpointing enabled (train mode for activation)")
 
     image_token_id = tokenizer.convert_tokens_to_ids("<image>")
     coder_dim = coder.config.hidden_size
-    print(f"  hidden_size={coder_dim}  image_token_id={image_token_id}")
-    print(f"  Coder model loaded and frozen\n")
+    if is_main:
+        print(f"  hidden_size={coder_dim}  image_token_id={image_token_id}")
+        print(f"  Coder model loaded and frozen\n")
 
     # ==================================================================
     # 2.  Create adapter  (trainable, fp32 weights)
     # ==================================================================
-    print(f"Creating adapter (1280 -> {coder_dim}) ...")
+    if is_main:
+        print(f"Creating adapter (1280 -> {coder_dim}) ...")
     adapter = ProjectionAdapter(vision_dim=1280, hidden_dim=4096, coder_dim=coder_dim)
+
+    if args.init_from:
+        ckpt = torch.load(args.init_from, map_location="cpu")
+        state = ckpt.get("adapter_state_dict", ckpt)
+        adapter.load_state_dict(state)
+        if is_main:
+            print(f"  Initialized from contrastive checkpoint: {args.init_from}")
+    else:
+        if is_main:
+            print("  Initialized with random weights")
+
     adapter = adapter.to(device)
-    print(f"  Parameters: {adapter.num_parameters():,}\n")
+    if is_distributed:
+        adapter = DDP(adapter, device_ids=[local_rank])
+    if is_main:
+        n_params = adapter.module.num_parameters() if is_distributed else adapter.num_parameters()
+        print(f"  Parameters: {n_params:,}\n")
 
     # ==================================================================
     # 3.  Datasets  (pre-computed features, all cached in CPU RAM)
     # ==================================================================
-    print("Loading datasets ...")
+    if is_main:
+        print("Loading datasets ...")
     train_ds = PrecomputedDataset(
         args.train_manifest, args.features_dir, tokenizer, args.max_seq_length,
     )
@@ -345,12 +389,17 @@ def main():
         args.val_manifest, args.features_dir, tokenizer, args.max_seq_length,
     )
 
+    train_sampler = DistributedSampler(train_ds, shuffle=True) if is_distributed else None
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size, shuffle=True,
+        train_ds, batch_size=args.batch_size,
+        sampler=train_sampler, shuffle=(train_sampler is None),
         num_workers=2, pin_memory=True,
     )
+    # Val loader: all ranks evaluate their own shard in parallel, then all_reduce
+    val_sampler = DistributedSampler(val_ds, shuffle=False) if is_distributed else None
     val_loader = DataLoader(
-        val_ds, batch_size=args.batch_size, shuffle=False,
+        val_ds, batch_size=args.batch_size,
+        sampler=val_sampler, shuffle=False,
         num_workers=2, pin_memory=True,
     )
 
@@ -362,28 +411,33 @@ def main():
     warmup_steps = int(total_steps * 0.03)
     scheduler = get_cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps)
 
-    eff_batch = args.batch_size * args.grad_accum
-    print(f"\nTraining plan:")
-    print(f"  Steps: {total_steps}   Warmup: {warmup_steps}")
-    print(f"  Effective batch size: {eff_batch}")
-    print(f"  Epochs: {args.epochs}\n")
+    eff_batch = args.batch_size * args.grad_accum * world_size
+    if is_main:
+        print(f"\nTraining plan:")
+        print(f"  Steps: {total_steps}   Warmup: {warmup_steps}")
+        print(f"  Effective batch size: {eff_batch}  (batch={args.batch_size} x accum={args.grad_accum} x gpus={world_size})")
+        print(f"  Epochs: {args.epochs}\n")
 
     # ==================================================================
     # 5.  Training loop
     # ==================================================================
-    os.makedirs(args.checkpoint_dir, exist_ok=True)
+    if is_main:
+        os.makedirs(args.checkpoint_dir, exist_ok=True)
     embed_fn = coder.get_input_embeddings()
     global_step = 0
     best_val_loss = float("inf")
 
-    print("=" * 60)
-    print("STARTING TRAINING")
-    print("=" * 60 + "\n")
+    if is_main:
+        print("=" * 60)
+        print("STARTING TRAINING")
+        print("=" * 60 + "\n")
 
     for epoch in range(args.epochs):
+        if train_sampler is not None:
+            train_sampler.set_epoch(epoch)   # ensures different shuffle per epoch across ranks
         adapter.train()
         epoch_loss, n_batches = 0.0, 0
-        progress = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}")
+        progress = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs}", disable=not is_main)
 
         for batch_idx, batch in enumerate(progress):
             ids  = batch["input_ids"].to(device)
@@ -417,25 +471,28 @@ def main():
                 global_step += 1
 
                 # Log
-                if global_step % args.log_steps == 0:
+                if is_main and global_step % args.log_steps == 0:
                     lr = scheduler.get_last_lr()[0]
                     print(f"  step={global_step}  "
                           f"loss={loss.item() * args.grad_accum:.4f}  "
                           f"lr={lr:.2e}")
 
-                # Validate
+                # Validate — all ranks eval their shard in parallel, then all_reduce
                 if global_step % args.eval_steps == 0:
-                    vl = evaluate(
-                        adapter, coder, val_loader,
-                        image_token_id, embed_fn, device,
-                    )
-                    print(f"  step={global_step}  val_loss={vl:.4f}")
-                    if vl < best_val_loss:
-                        best_val_loss = vl
-                        save_checkpoint(
-                            adapter, optimizer, scheduler,
-                            global_step, epoch, args.checkpoint_dir, "best",
-                        )
+                    inner = adapter.module if is_distributed else adapter
+                    vl = evaluate(inner, coder, val_loader, image_token_id, embed_fn, device)
+                    if is_distributed:
+                        vl_t = torch.tensor(vl, device=device)
+                        dist.all_reduce(vl_t, op=dist.ReduceOp.AVG)
+                        vl = vl_t.item()
+                    if is_main:
+                        print(f"  step={global_step}  val_loss={vl:.4f}")
+                        if vl < best_val_loss:
+                            best_val_loss = vl
+                            save_checkpoint(
+                                inner, optimizer, scheduler,
+                                global_step, epoch, args.checkpoint_dir, "best",
+                            )
                     adapter.train()
 
             epoch_loss += loss.item() * args.grad_accum
@@ -443,18 +500,25 @@ def main():
             progress.set_postfix(loss=f"{epoch_loss / n_batches:.4f}")
 
         avg = epoch_loss / max(n_batches, 1)
-        print(f"\nEpoch {epoch + 1} — avg train loss: {avg:.4f}")
-        save_checkpoint(
-            adapter, optimizer, scheduler,
-            global_step, epoch, args.checkpoint_dir, f"epoch{epoch + 1}",
-        )
+        if is_main:
+            print(f"\nEpoch {epoch + 1} — avg train loss: {avg:.4f}")
+            inner = adapter.module if is_distributed else adapter
+            save_checkpoint(
+                inner, optimizer, scheduler,
+                global_step, epoch, args.checkpoint_dir, f"epoch{epoch + 1}",
+            )
 
     # Final save (adapter weights only, for easy loading later)
-    final_path = os.path.join(args.checkpoint_dir, "adapter_final.pt")
-    torch.save(adapter.state_dict(), final_path)
-    print(f"\nSaved final adapter weights: {final_path}")
-    print(f"Best validation loss: {best_val_loss:.4f}")
-    print("Training complete!")
+    if is_main:
+        inner = adapter.module if is_distributed else adapter
+        final_path = os.path.join(args.checkpoint_dir, "adapter_final.pt")
+        torch.save(inner.state_dict(), final_path)
+        print(f"\nSaved final adapter weights: {final_path}")
+        print(f"Best validation loss: {best_val_loss:.4f}")
+        print("Training complete!")
+
+    if is_distributed:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":

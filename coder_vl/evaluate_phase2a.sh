@@ -10,8 +10,8 @@
 #SBATCH --mail-type=END,FAIL
 
 # Phase 2a Evaluation: Gates G4 (ROUGE-L), G5 (exact-match), G6 (Distinct-1)
-# Prereq: training complete, best.pt exists in ./checkpoints/phase2a/
-# Expected: ~30-60 min on 1x V100 (560 val examples, greedy generation)
+# Prereq: training complete, best.pt exists in ./checkpoints/phase2a_v5/
+# Expected: ~30-60 min on 1x V100 (2086 combined val examples, greedy generation)
 
 echo "=================================================="
 echo "Phase 2a: Evaluation (G4/G5/G6)"
@@ -26,13 +26,19 @@ nvidia-smi
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 cd "$HOME/CoderOCR/OCR-Coder" || exit 1
 
+# Combine val manifests (same as training)
+COMBINED_VAL=$(mktemp /tmp/phase2a_eval_val_XXXX.jsonl)
+cat "Data Crawling/output/manifests/val.jsonl" "data_v2/manifests/val.jsonl" > "$COMBINED_VAL"
+echo "Combined val: $(wc -l < "$COMBINED_VAL") examples"
+
 "$PYTHON" coder_vl/evaluate_phase2a.py \
-    --checkpoint ./checkpoints/phase2a/best.pt \
+    --checkpoint ./checkpoints/phase2a_v5/best.pt \
     --features_dir ./precomputed_features \
-    --val_manifest "Data Crawling/output/manifests/val.jsonl" \
+    --val_manifest "$COMBINED_VAL" \
     --max_new_tokens 256
 
 EXIT_CODE=$?
+rm -f "$COMBINED_VAL"
 
 echo ""
 echo "=================================================="

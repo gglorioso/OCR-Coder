@@ -9,7 +9,7 @@
 #SBATCH --mail-user=gloriosog@msoe.edu
 #SBATCH --mail-type=END,FAIL
 
-# Phase 2a Evaluation: Quick test (15 examples)
+# Phase 2a Evaluation: Quick smoke test (15 examples, ~10-15 min)
 
 echo "=================================================="
 echo "Phase 2a: Quick Evaluation (15 examples)"
@@ -24,14 +24,20 @@ nvidia-smi
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 cd "$HOME/CoderOCR/OCR-Coder" || exit 1
 
+# Combine val manifests (same as training)
+COMBINED_VAL=$(mktemp /tmp/phase2a_eval_val_XXXX.jsonl)
+cat "Data Crawling/output/manifests/val.jsonl" "data_v2/manifests/val.jsonl" > "$COMBINED_VAL"
+echo "Combined val: $(wc -l < "$COMBINED_VAL") examples (using first 15)"
+
 "$PYTHON" coder_vl/evaluate_phase2a.py \
-    --checkpoint ./checkpoints/phase2a/best.pt \
+    --checkpoint ./checkpoints/phase2a_v5/best.pt \
     --features_dir ./precomputed_features \
-    --val_manifest "Data Crawling/output/manifests/val.jsonl" \
+    --val_manifest "$COMBINED_VAL" \
     --max_new_tokens 256 \
     --max_samples 15
 
 EXIT_CODE=$?
+rm -f "$COMBINED_VAL"
 
 echo ""
 echo "=================================================="
