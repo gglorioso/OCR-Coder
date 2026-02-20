@@ -7,19 +7,21 @@ Or infer from conversation if obvious.
 ## 2. Targeted Updates Only
 
 ### Always update:
-- `Context/claude.md` - Quick Status section only (lines 8-36)
+- `Context/claude.md` - Find "## Quick Status" section and update:
   - Update "Last Updated" date
   - Update "Current Phase" if changed
-  - Update first 2 "Next Steps" items
+  - Update first 2 "Next Steps" items under "Current Step"
 
 ### Update if phase/architecture changed:
-- `Context/WORKSPACE_NOTES.md` - Next Actions section only (lines 260-275)
+- `Context/WORKSPACE_NOTES.md` - Find "## Next Actions" section:
   - Check first item under "Next Actions" and update if different
+  - Add new completed items at the top if needed
 
 ### Update if plan/hyperparameters changed:
-- `Context/PHASE2_PLAN.md` - Changelog section only (append 1 line to Section 15)
+- `Context/PHASE2_PLAN.md` - Find changelog section (search for "Changelog" or "Section 15"):
+  - Append 1 line with date and brief summary
 
-**Use targeted Edit calls - do NOT read full files before editing**
+**Use codebase_search to locate sections, then use targeted Edit calls - do NOT read full files before editing**
 
 ## 3. Emit Ultra-Brief Handoff
 

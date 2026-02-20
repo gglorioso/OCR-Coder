@@ -7,43 +7,22 @@
 
 ## Quick Status
 
-**Current Phase:** 2a - DEBUGGING (Model not using visual features)
-**Last Updated:** 2026-02-13
+**Current Phase:** 2a - Tiling re-precompute needed before next training run
+**Last Updated:** 2026-02-19
 
-- ✅ **Phase 1 Complete:** Vision encoder compression validated (10-20x for large files)
-- ✅ **Phase 1.5 Complete:** Embedding dimensions confirmed
-  - Vision encoder: **1280D** (from Phase 1 testing)
-  - Coder model: **2048D** (from config inspection)
-  - Projection adapter: **13.6M parameters** (1280D → 4096D → 2048D)
-- ✅ **Phase 2a Data (MVP) Complete:** ~11K code-image Q&A examples generated
-  - 2,500 rendered code images (monokai, no line numbers)
-  - 11,244 examples total → **10,119 train / 562 val / 563 test**
-  - Manifests in `Data Crawling/output/manifests/{train,val,test}.jsonl`
-- ✅ **Phase 2a Training Complete:** Successful convergence (job 222458)
-  - Final train loss: **1.40** (well below 3.0 threshold)
-  - Best val loss: **1.27** (step 550)
-  - Train-val gap: **0.14** (no overfitting)
-  - Checkpoint: `./checkpoints/phase2a/best.pt`
-- ❌ **Phase 2a Evaluation FAILED:** Model hallucinates, ignores visual features
-  - Quick eval (15 examples): G4=0.089, G5=0.0%, G6=0.136 (all FAIL)
-  - Model generates plausible text but doesn't read image content
-  - Example: Repeats same `__init__` signature instead of listing actual functions
-  - **Root cause:** Adapter not learning to map OCR-2 → Coder-V2 representation spaces
+- ✅ **Contrastive v4:** (job 223383) val_loss=0.3356, val_cos=0.840 — SUCCESS
+- ✅ **Phase 2a v4** (job 223660) COMPLETE — best val_loss=1.2591; eval FAILED all gates (Chinese loops)
+- ✅ **Phase 2a v5** (job 223917) COMPLETE — lr=1e-5, best val_loss=1.3552
+  - G6 PASSES (0.3095) — alignment preserved, no Chinese loops ✅
+  - G4=0.0789 FAIL, G5=0.000 FAIL
+  - **Root cause: 256-token base view = 88:1 compression** — visual tokens carry domain/structure
+    but NOT fine-grained identifiers. Fix: enable tiling (1120 tokens, 20:1 compression).
+  - Checkpoint: `./checkpoints/phase2a_v5/best.pt`
 
-**Debug Findings (2026-02-13):**
-- ✅ Visual features ARE diverse (cosine sim 0.19-0.66, GOOD)
-- ✅ Token replacement logic correct (training = evaluation)
-- ✅ Data format correct (`<img_start><image><img_end>`)
-- ❌ Model learned text patterns, not visual decoding
-- ❌ Projection adapter (2-layer MLP) insufficient for representation mapping
-
-**Next Steps:**
-1. **Binary classification test** to verify pipeline can work at all
-   - Simpler task: "Does code contain class/function? Yes/No"
-   - If this works → adapter needs more capacity/training
-   - If this fails → architectural issue in token integration
-2. If binary test passes → increase adapter capacity or add attention supervision
-3. If binary test fails → investigate token attention mechanism
+**Current Step: Enable tiling, re-precompute features, retrain**
+1. ✅ v5 eval done; root cause confirmed = 88:1 token compression losing fine-grained content
+2. ⏳ Modify `precompute_features.py` to save tiled features [1120, 1280] instead of [256, 1280]
+3. ⏳ Re-precompute (1x V100, ~30-60 min) → retrain at lr=1e-5 with reduced max_seq_length
 
 ---
 

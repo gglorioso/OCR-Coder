@@ -1,6 +1,6 @@
 # DeepSeek-Coder-VL Workspace Notes
 
-*Last updated: 2026-02-12*
+*Last updated: 2026-02-15*
 
 ## Phase 1: Validation Complete ✅
 
@@ -323,22 +323,95 @@ A three-phase hybrid workflow combining vision and text:
    - **Conclusion:** Architecture is fine, problem is representation space mismatch
    - See detailed findings in "Test 1: Perfect Features Experiment" section below
 
-6. **🔧 NEXT (2026-02-14):** Fix projection bottleneck
-   - **Option 1 (RECOMMENDED):** Switch to SigLIP/CLIP vision encoder
-     - Better language alignment than OCR-2 (document-focused)
-     - Same 2-layer MLP might work with better source features
-   - **Option 2:** Stronger adapter architecture
-     - Add attention layers, deeper MLP, or cross-attention
-     - More complex but keeps OCR-2 encoder
-   - **Option 3:** Add contrastive loss during training
-     - Force alignment between visual and text spaces
+6. **✅ COMPLETED (2026-02-15):** Linear probe test — both OCR-2 and SigLIP preserve code semantics
+   - OCR-2: binary +13.6%, regression R²=0.437 | SigLIP: binary +13.6%, R²=0.496
+   - has_function and has_imports FAIL (too common, baseline hard to beat)
+   - Conclusion: semantic info preserved, adapter mapping is the bottleneck
 
-7. **Medium-term:** Scale data and Phase 2b
+7. **✅ COMPLETED (2026-02-16):** Diagnostic reconstruction test (job 223094)
+   - **BLEU=0.000, ROUGE-L=0.011** — total failure
+   - Model generates Chinese text / conversational garbage (adapter outputs wrong embedding region)
+   - Root cause: adapter learned via LM loss → outputs land in Chinese conversational cluster of coder space
+   - Decision: Contrastive pre-training is MANDATORY
+
+8. **✅ COMPLETED (2026-02-16):** Contrastive pre-trainer built and run v1
+   - Files: `coder_vl/contrastive_pretrain.py`, `coder_vl/contrastive_pretrain.sh`
+   - Job 223232: 11 minutes, batch=64, temp=0.07, 100 epochs, 2,164 unique images
+   - Results: val_loss=3.4112 (from 4.16 baseline), val pos_cos=0.109
+   - **Why Chinese output:** Adapter trained via LM loss found the Chinese conversational cluster
+     in DeepSeek-Coder-V2 embedding space (a low-loss region from Chinese pretraining data).
+     Contrastive loss directly forces outputs toward the code embedding cluster instead.
+   - **Plateau issue:** With only 2,165 unique images, model memorized negatives by epoch ~41.
+     Val loss stopped improving; model can't generalize without more image diversity.
+   - **Decision:** Re-run with more unique images (dracula theme on all Scraped Repos)
+
+9. **✅ COMPLETED (2026-02-17):** Contrastive pre-training v2 — expanded dataset
+   - Job 223242 (data_gen_v2): rendered 5,625 dracula images (~30 min on teaching)
+   - Job 223307 (precompute_v2): 5,621/5,625 images processed (4 decompression bomb errors), [144, 1280] each → 7,786 total .pt files
+   - Job 223350 (contrastive_v2): 100 epochs, batch=64, temp=0.07 (fixed), 7,776 train / 1,729 val
+   - Results: val_loss=3.2466 (baseline 4.16), val_cos=0.131, train_loss=2.28
+   - **Train/val gap (2.28 vs 3.25):** model fitting batch-level patterns, not generalizing
+   - **Root cause of low val_cos=0.131:** InfoNCE softmax degrades with small batch (only 63 negatives per positive). With 7,786 images and batch=64, model saturates in-batch structure.
+   - **Decision:** Switch to SigLIP loss + learnable temperature (v3)
+
+10. **❌ COMPLETED (2026-02-17):** Contrastive pre-training v3 — SigLIP loss (FAILED)
+    - Job 223372: SigLIP loss + learnable temp, 150 epochs
+    - Results: val_loss=0.2337 (below 0.3 target ✓) BUT val_cos=-0.832 (target >0.5 ✗)
+    - train_cos=-0.927, final temp=0.406
+    - **Root cause — representation collapse from class imbalance:**
+      With batch=64, there are 63 negative pairs and 1 positive pair per row (63:1 ratio).
+      The model found the degenerate minimum: push ALL visual embeddings anti-aligned against
+      ALL text embeddings. This correctly classifies 63/64 pairs (negatives) at low cost
+      (sigmoid(-2.3*-1) ≈ 0.097 each) while misclassifying 1/64 (the positive) at high cost.
+      Math check: avg loss = (2.4 + 63×0.097) / 64 ≈ 0.133 — matches observed train_loss exactly.
+    - **Why SigLIP was tried:** sigmoid per-pair is batch-size independent; InfoNCE quality scales with batch
+      - SigLIP random-init baseline ≈ 0.693 (vs InfoNCE 4.16); target < 0.3
+      - Learnable temperature starts at 1.0 (soft), adapts to find right sharpness
+      - Proven to match InfoNCE at 32K batch with only 1K batch (Zhai et al., 2023)
+    - **Decision:** Need bias parameter to break class imbalance
+
+11. **✅ COMPLETED (2026-02-17):** Contrastive pre-training v4 — SigLIP + bias fix
+    - Job 223383: 150 epochs, 4x V100 → val_loss=0.3356, val_cos=0.840, temp=0.379, bias=-9.005
+    - Bias fix worked perfectly: collapsed v3 (val_cos=-0.832) → aligned v4 (val_cos=+0.840)
+    - Checkpoint: `./checkpoints/contrastive_v4/best.pt` (epoch 145)
+
+12. **✅ COMPLETED (2026-02-17):** Phase 2a training script overhauled + job submitted
+    - `train_projector.py`: added DDP (torchrun, NCCL), DistributedSampler, barriers around eval,
+      rank-gated logging/checkpointing, `device_map={"": local_rank}` for per-GPU coder copy
+    - `train_phase2a.sh`: lr 1e-3→1e-4 (protect contrastive init), epochs 1→2,
+      gpus 1→4, combined manifests (37,590 train / 2,088 val from original + data_v2),
+      eval_steps 50→200, torchrun --nproc_per_node=4
+    - Submitted: `sbatch coder_vl/train_phase2a.sh` — estimated ~17 hours on 4x V100
+    - **Bug fix (2026-02-18):** First attempt (job 223447) crashed at step 200 with NCCL timeout
+      Root cause: rank 0 evaluated 2,086 val examples solo (~87min) while ranks 1-3 waited at barrier
+      Fix: DistributedSampler on val_loader + dist.all_reduce(AVG) instead of barriers
+    - Job 223660 running: step 800/1174 (68%), val_loss 1.3459→1.2671 (still declining)
+
+13. **✅ COMPLETED (2026-02-19):** Phase 2a v4 eval + root cause diagnosis
+    - Job 223660 (v4, lr=1e-4): best val_loss=1.2591, all eval gates FAILED
+    - Chinese loops / repetition — LM fine-tuning at 1e-4 catastrophically forgot contrastive_v4 alignment
+    - Sanity check (job 223916): contrastive checkpoint alone → coherent English, no loops, G6=0.2819
+
+14. **✅ COMPLETED (2026-02-19):** Phase 2a v5 — lr=1e-5 fix
+    - Job 223917: lr=1e-5, 2 epochs, 4x V100, ~15h45m; best val_loss=1.3552
+    - G6 PASSES (0.3095) — alignment preserved, no Chinese ✅; G4=0.0789 FAIL, G5=0.000 FAIL
+    - **Second root cause: 256-token base view = 88:1 compression** for large files
+      Visual tokens carry coarse domain/structure but not specific identifiers.
+    - Checkpoint: `./checkpoints/phase2a_v5/best.pt`
+
+15. **⏳ NEXT:** Enable tiling, re-precompute features, retrain (v6)
+    - Modify `precompute_features.py`: save tiled [1120, 1280] features instead of [256, 1280]
+    - Re-precompute all features (both original + data_v2): ~30-60 min on 1x V100
+    - Update `train_projector.py`: reduce `max_seq_length` to fit 1120 visual tokens
+    - Retrain at lr=1e-5, 2 epochs → `./checkpoints/phase2a_v6/`
+    - Expected: 20:1 compression vs 88:1 → model can recover specific identifier names
+
+16. **Medium-term:** Scale data and Phase 2b
    - Scale training data to 50K–100K examples using advanced pipeline
    - If Phase 2a gates pass → proceed to Phase 2b (adapter + LoRA on H100)
    - Phase 2b: Instruction fine-tuning (~12–18 hours on H100)
 
-5. **Future:** Evaluate Sniper method in Phase 4
+17. **Future:** Evaluate Sniper method in Phase 4
    - Compare direct vision-to-patch vs hybrid approach
    - Measure accuracy vs latency trade-offs
 
@@ -475,5 +548,239 @@ Coder features:     "Python code, functions, imports, logic"
 
 ---
 
+### SigLIP Alignment Test ❌ (2026-02-15)
+
+**Goal:** Test if SigLIP-SO400M (language-aligned vision encoder) produces features better aligned with Coder's representation space than OCR-2.
+
+**Setup:**
+- Extracted SigLIP-SO400M vision encoder (428M params, 1152D output, 729 tokens/image)
+- Ran alignment test: random adapters + perplexity comparison on 30 val examples, 3 seeds
+
+**Results (Job 222952):**
+```
+OCR-2:  Loss 2.78, Perplexity 16.1 ✅
+SigLIP: Loss 3.78, Perplexity 43.7 ❌
+Verdict: OCR-2 is 26.5% better aligned
+```
+
+**Conclusion:**
+- ❌ SigLIP does NOT improve alignment (worse than OCR-2)
+- SigLIP trained for general image-text (photos, objects) not code
+- OCR-2's document OCR training is actually closer to code understanding
+- **Neither encoder is aligned with code semantics** — both far from Coder's space
+
+**Files created:**
+- `coder_vl/siglip_test/extract_siglip.py/sh` — SigLIP encoder extraction
+- `coder_vl/siglip_test/test_siglip_alignment.py/sh` — Alignment comparison
+- `./models/siglip_encoder.pt` — Extracted encoder (0.80 GB)
+
+**Job IDs:**
+- 222951 — SigLIP extraction (55 sec)
+- 222952 — Alignment test (4m 43s)
+
+---
+
+### Research: Vision-Language Model Architectures (2026-02-15)
+
+**Goal:** Investigate how existing VLMs solve the projection adapter problem and whether pre-trained code vision models exist.
+
+**Key Findings:**
+
+**1. LLaVA Architecture (Industry Standard):**
+- Uses exact same 2-layer MLP approach as our adapter (`mlp2x_gelu`)
+- LLaVA-1.5: `Linear(1024, 4096) → GELU → Linear(4096, 5120)`
+- **Why it works for them:** CLIP vision encoder pre-trained with text supervision (image-caption pairs)
+- Natural images → text is smaller semantic gap than code images → code text
+- Their projector aligns "already language-aligned features"
+
+**2. BLIP-2 Q-Former (More Sophisticated):**
+- Uses Querying Transformer instead of simple MLP
+- 32 learnable query embeddings with cross-attention to visual features
+- Acts as "information bottleneck" — selectively attends to relevant visual features
+- **Two-stage pre-training:**
+  - Stage 1: Vision-language representation learning (ITC + ITM + ITG losses)
+  - Stage 2: Vision-to-language generative learning
+- More parameters (~50-100M vs our 13.6M) but stronger alignment
+
+**3. Qwen-VL Evolution:**
+- Qwen-VL v1: Cross-attention adapter (256 learnable queries)
+- Qwen2-VL & Qwen3-VL: **Switched back to MLP** (simpler, faster)
+- **Why the switch?** MLPs work well IF vision encoder is good enough
+- Qwen uses InternViT trained on massive vision-language data
+
+**4. Open Source Code Vision Models Investigation:**
+
+**Qwen3-VL (8B-235B, Apache 2.0):**
+- Vision encoder: 1152D → 4096D (SigLIP-sized hidden dim)
+- Uses DeepStack multi-layer injection (layers 8, 16, 24)
+- **CodeOCR paper results:** Code completion 49.7% → 35.5% (text → image, -29% drop)
+- **Verdict:** Available but NOT good at code-as-images
+
+**GLM-4.6V (9B-106B, open license):**
+- Vision encoder: 1536D → 4096D (AIMv2-Huge based, MoE architecture)
+- **CodeOCR paper results:** Clone detection 81.6% → 69.6% (text → image, -15% drop)
+- **Verdict:** Available but struggles with code vision
+
+**Key insight from CodeOCR paper (Jan 2026):**
+- Only proprietary models (GPT-5, Gemini-3) maintain performance on code images
+- Open models (Qwen-3-VL, GLM-4.6v) show "significant degradation under compression"
+- **No effective pre-trained code vision model exists publicly**
+
+---
+
+### Solution Approaches Analysis (2026-02-15)
+
+**The Core Problem:**
+- OCR-2 features (document layout understanding) ≠ Coder features (code semantic understanding)
+- 2-layer MLP adapter too weak to bridge fundamentally different semantic spaces
+- Test 1 proved: token insertion works, adapter just can't decode visual features
+
+**Evaluated Solutions:**
+
+**Option 1: Q-Former Adapter** ⭐⭐⭐
+- Cross-attention queries selectively extract code-relevant features
+- 50-100M params, proven architecture (BLIP-2)
+- Medium effort (~3 hours implementation, ~12 hours training)
+
+**Option 2: Stronger MLP** ⭐⭐
+- Deeper (3-4 layers), residual connections, LayerNorm
+- Simple, fast to try (~1 hour implementation, ~9 hours training)
+- But: if simple MLP worked, Qwen/GLM would've succeeded
+
+**Option 3: Contrastive Pre-training** ⭐⭐⭐⭐
+- Two-stage training like BLIP-2:
+  - Stage 1: Align visual features with text embeddings (contrastive loss)
+  - Stage 2: Task-specific generation (current training)
+- Forces adapter to learn representation mapping explicitly
+- High effort (~2-3 days) but solves root cause
+- **This is what GPT-5/Gemini did internally** (not published but inferred)
+
+**Option 4: Pre-trained Code Vision Model** ⭐⭐⭐⭐⭐
+- **Status:** Does NOT exist in effective open-source form
+- Qwen-3-VL and GLM-4.6v available but show worse performance on code images vs text
+- Only closed models work (GPT-5, Gemini-3) — not extractable
+
+**User's Simplified Approach (Direct Embedding Alignment):**
+- Even simpler than full contrastive learning
+- Train adapter to directly map: `adapter(visual_features) = coder.embed(ground_truth_code)`
+- Loss: `MSE(predicted_embedding, target_embedding)`
+- **Pros:** Simple, explicit supervision, no negative sampling
+- **Cons:** Assumes visual features contain enough semantic info
+- Also called "feature distillation" or "embedding alignment"
+
+**Critical Question (raised by user):**
+> "Is this even possible? Vision encoder compresses based on visual semantics (layout), not code semantics. If semantic info is lost, no adapter can recover it."
+
+**Answer:** Unknown. Need to test if OCR-2 features contain code-semantic information.
+
+---
+
+### Next Action: Linear Probe Test (Planned)
+
+**Goal:** Validate if OCR-2 visual features contain code-semantic information (not just layout).
+
+**Approach:**
+```python
+# For each code image:
+visual_feat = OCR2(image).mean(dim=0)  # [1280]
+
+# Test semantic decoding with simple linear classifier:
+# - "Has class definition?" (binary)
+# - "Number of functions?" (count)
+# - "Main language construct?" (classification)
+
+classifier = Linear(1280, num_classes)
+accuracy = train_probe(visual_features, labels)
+
+# If accuracy >> random → semantic info preserved → alignment can work
+# If accuracy ≈ random → info lost → need different vision encoder
+```
+
+**Why this matters:**
+- If probe fails → BOTH alignment approaches (direct + contrastive) will fail
+- If probe passes → validates feasibility before investing in training
+- Should test MULTIPLE vision encoders:
+  - OCR-2 (current, 1280D)
+  - SigLIP-SO400M (extracted, 1152D)
+  - Potentially others (different OCR models, general ViTs)
+- Find which encoder preserves most code-semantic information
+
+**Estimated effort:** 1-2 hours implementation, 30-60 min per encoder test
+
+**Decision tree:**
+```
+Probe Test (multiple encoders)
+  ↓
+Best encoder has high accuracy?
+  ├─ YES → Use that encoder + alignment training (direct or contrastive)
+  └─ NO → All encoders fail → project infeasible with current approach
+```
+
+---
+
+### Linear Probe Test ✅ (2026-02-15)
+
+**Goal:** Validate if visual features contain code-semantic information.
+
+**Setup:**
+- Extracted labels from Phase 2a train manifest (2165 images → 1732 train / 433 val split)
+- Tasks: Binary (has_class, has_function, etc.), multi-class (file_size_bucket, function_count_bucket), regression (num_functions, num_classes)
+- Trained simple linear classifiers on pooled visual features (OCR-2: [1280], SigLIP: [1152])
+
+**Results (Job 223005):**
+
+| Encoder | Binary Δ | Regression R² | Verdict |
+|---------|----------|---------------|---------|
+| OCR-2   | +13.6%   | 0.437         | STRONG  |
+| SigLIP  | +13.6%   | 0.496         | STRONG  |
+
+**Key Findings:**
+- ✅ **Both encoders preserve code semantics** - can predict classes, functions, file size well above baseline
+- SigLIP slightly better for regression (R²=0.496 vs 0.437), OCR-2 equivalent for binary tasks
+- **Contradiction with alignment test:** SigLIP has MORE semantic info but is FURTHER from Coder space; OCR-2 has LESS semantic info but is CLOSER to Coder space
+- **Conclusion:** OCR-2 still preferred (easier to align)
+
+**Implications:**
+- ✅ **Root cause confirmed:** Visual features contain semantics; adapter just too weak to map them
+- ✅ **Alignment training is feasible** - info is there, we just need better mapping
+- ⚠️ **Uncertainty:** Does visual encoding preserve ENOUGH fine-grained info (function names, signatures)? Probe only tests coarse properties.
+
+**Files created:**
+- `coder_vl/linear_probe/generate_probe_labels.py` - Label extraction
+- `coder_vl/linear_probe/extract_probe_features.py` - Feature pooling (OCR-2, SigLIP)
+- `coder_vl/linear_probe/train_linear_probe.py` - Probe training
+- `coder_vl/linear_probe/run_probe_test.sh` - SLURM job
+- `coder_vl/linear_probe/probe_data/{ocr2,siglip}/probe_results.json` - Detailed metrics
+
+---
+
+### Next Action: Choose Fix Strategy (2026-02-15)
+
+**Three viable paths identified:**
+
+**Option 1: Diagnostic Test First** ⭐ (Recommended)
+- Test: Can current (badly trained) adapter reconstruct code from visual features?
+- Measure BLEU/ROUGE between generated text and ground truth
+- **If BLEU >0.3:** Info preserved → proceed with stronger adapter
+- **If BLEU <0.1:** Info lost → need vision encoder fine-tuning
+- Effort: 1-2 hours implementation, 30 min test
+
+**Option 2: Stronger Adapter (if diagnostic passes)**
+- **2a. Direct embedding alignment:** Train adapter to match `adapter(visual) = coder.embed(text)` using MSE loss (simplest, 3-4 hours impl + 3-4 hours train)
+- **2b. Deeper MLP:** 4-layer with residuals, 47M params (2-3 hours impl + 9-12 hours train)
+- **2c. Q-Former lite:** 16 queries, 3 layers, ~14M params (6-8 hours impl + 12-15 hours train)
+
+**Option 3: Vision Encoder Fine-tuning (if diagnostic fails)**
+- Contrastive pre-training: Align OCR-2 (454M params) → Coder embedding space
+- VRAM: ~20GB (fits V100), Training: 8-12 hours
+- Then freeze encoder, train small adapter on Q&A task
+- Directly fixes root cause (bad visual features) vs. symptom (weak adapter)
+
+**Decision pending:** Run diagnostic to determine if info bottleneck is in vision encoder or adapter.
+
+---
+
 *This workspace file tracks progress, findings, and next steps for the DeepSeek-Coder-VL project.*
 
+
+---

@@ -23,6 +23,13 @@ slurm-*.err
 
 # Precomputed vision features (large, regeneratable)
 precomputed_features/
+precomputed_features_tiled/
+
+# Additional data directories
+data_v2/
+
+# Diagnostic/test results
+diagnostic_results.json
 
 ########################
 # Python build artifacts

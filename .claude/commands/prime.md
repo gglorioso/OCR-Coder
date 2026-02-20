@@ -1,8 +1,9 @@
 Bootstrap a fresh instance - LIGHTWEIGHT MODE (minimal context usage).
 
 ## 1. Read Essential Sections Only
-- `Context/claude.md` lines 1-75 (Quick Status + Key Context sections)
-- `Context/WORKSPACE_NOTES.md` lines 260-316 (Next Actions section)
+Use codebase_search to find and read:
+- `Context/claude.md` - Search for "## Quick Status" section and read through "## Key Context" section
+- `Context/WORKSPACE_NOTES.md` - Search for "## Next Actions" section and read that entire section
 
 ## 2. Quick File Check (no full reads)
 ```bash
