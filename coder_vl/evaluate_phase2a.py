@@ -103,7 +103,8 @@ def compute_distinct_1(texts: list) -> float:
 
 @torch.no_grad()
 def generate_one(prompt_ids, features, adapter, coder, tokenizer,
-                 image_token_id, embed_fn, device, max_new_tokens):
+                 image_token_id, embed_fn, device, max_new_tokens,
+                 repetition_penalty=1.0):
     """
     Replace <image> token with projected features and generate greedily.
     Uses manual autoregressive loop since .generate() doesn't handle inputs_embeds well.
@@ -168,7 +169,16 @@ def generate_one(prompt_ids, features, adapter, coder, tokenizer,
             past_key_values = outputs.past_key_values
 
         # Get next token logits (last position)
-        logits = outputs.logits[0, -1, :]  # [vocab_size]
+        logits = outputs.logits[0, -1, :].clone()  # [vocab_size]
+
+        # Repetition penalty: divide logit of already-generated tokens
+        if repetition_penalty != 1.0 and generated_ids:
+            for tok_id in set(generated_ids):
+                if logits[tok_id] > 0:
+                    logits[tok_id] /= repetition_penalty
+                else:
+                    logits[tok_id] *= repetition_penalty
+
         next_token_id = logits.argmax().item()
 
         # Stop on EOS
@@ -203,6 +213,13 @@ def main():
     parser.add_argument("--max_new_tokens", type=int, default=256)
     parser.add_argument("--max_samples", type=int, default=0,
                         help="Cap on val examples (0 = use all)")
+    parser.add_argument("--save_file", default="",
+                        help="Path to save/resume results JSON. If the file exists, "
+                             "already-processed IDs are skipped (resume mode).")
+    parser.add_argument("--save_every", type=int, default=100,
+                        help="Flush results to --save_file every N examples (default 100)")
+    parser.add_argument("--repetition_penalty", type=float, default=1.0,
+                        help="Repetition penalty > 1.0 discourages repeated tokens (e.g. 1.3)")
     args = parser.parse_args()
 
     device = "cuda"
@@ -292,8 +309,20 @@ def main():
     print("RUNNING INFERENCE")
     print("=" * 60 + "\n")
 
+    # Resume: load any existing partial results
     results = []
+    processed_ids = set()
+    if args.save_file and Path(args.save_file).exists():
+        with open(args.save_file) as f:
+            results = json.load(f)
+        processed_ids = {r["id"] for r in results}
+        print(f"  Resuming from {args.save_file}: {len(results)} examples already done\n")
+
     for ex in tqdm(valid, desc="Generating"):
+        ex_id = ex.get("id", "")
+        if ex_id in processed_ids:
+            continue
+
         conv = ex["conversations"]
         user_msg = conv[0]["content"]
         reference = conv[1]["content"]
@@ -303,20 +332,33 @@ def main():
         prompt = f"User: {user_msg}\n\nAssistant:"
         tok = tokenizer(prompt, return_tensors="pt")
         prompt_ids = tok["input_ids"]                            # [1, seq]
-        feat = torch.load(ex["_feat_path"], map_location="cpu")  # [256, 1280]
-        feat = feat.unsqueeze(0)                                 # [1, 256, 1280]
+        feat = torch.load(ex["_feat_path"], map_location="cpu")  # [num_tokens, 1280]
+        feat = feat.unsqueeze(0)                                 # [1, num_tokens, 1280]
 
         generated = generate_one(
             prompt_ids, feat, adapter, coder, tokenizer,
             image_token_id, embed_fn, device, args.max_new_tokens,
+            repetition_penalty=args.repetition_penalty,
         )
 
         results.append({
-            "id":        ex.get("id", ""),
+            "id":        ex_id,
             "task_type": task_type,
             "generated": generated,
             "reference": reference,
         })
+
+        # Periodic save
+        if args.save_file and len(results) % args.save_every == 0:
+            with open(args.save_file, "w") as f:
+                json.dump(results, f)
+            tqdm.write(f"  [Saved {len(results)} results → {args.save_file}]")
+
+    # Final save
+    if args.save_file:
+        with open(args.save_file, "w") as f:
+            json.dump(results, f)
+        print(f"\n  Results saved to {args.save_file} ({len(results)} total)")
 
     # ==================================================================
     # 5. Compute metrics
@@ -355,6 +397,8 @@ def main():
     print("=" * 60)
     print("PHASE 2A GATE RESULTS")
     print("=" * 60)
+    if len(results) < len(valid):
+        print(f"  NOTE: partial results ({len(results)}/{len(valid)} examples)")
     print()
 
     g4_pass = avg_rouge > 0.25

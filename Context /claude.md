@@ -7,22 +7,20 @@
 
 ## Quick Status
 
-**Current Phase:** 2a - Tiling re-precompute needed before next training run
-**Last Updated:** 2026-02-19
+**Current Phase:** 2a complete — awaiting final G6 result (rep-penalty re-eval); ready to decide on Phase 2b
+**Last Updated:** 2026-02-22
 
-- ✅ **Contrastive v4:** (job 223383) val_loss=0.3356, val_cos=0.840 — SUCCESS
-- ✅ **Phase 2a v4** (job 223660) COMPLETE — best val_loss=1.2591; eval FAILED all gates (Chinese loops)
-- ✅ **Phase 2a v5** (job 223917) COMPLETE — lr=1e-5, best val_loss=1.3552
-  - G6 PASSES (0.3095) — alignment preserved, no Chinese loops ✅
-  - G4=0.0789 FAIL, G5=0.000 FAIL
-  - **Root cause: 256-token base view = 88:1 compression** — visual tokens carry domain/structure
-    but NOT fine-grained identifiers. Fix: enable tiling (1120 tokens, 20:1 compression).
-  - Checkpoint: `./checkpoints/phase2a_v5/best.pt`
+- ✅ **Phase 2a v6** (job 224288) COMPLETE — tiled 720 tokens (5×144), lr=1e-5, best val_loss=1.3739
+  - Full eval (job 224872, 2086 ex): G4=0.2831 PASS, G5=0.011 FAIL, G6=0.0893 FAIL
+  - G6 failure: `description` task → `"""` repetition loop tanks Distinct-1
+  - Re-eval (job 225091) running: 405 description examples with repetition_penalty=1.3, resuming from eval_results_v6.json (1681 cached)
+  - G5 diagnosis: frozen LLM uses priors not image; unfixable without Phase 2b LoRA
+  - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json`
 
-**Current Step: Enable tiling, re-precompute features, retrain**
-1. ✅ v5 eval done; root cause confirmed = 88:1 token compression losing fine-grained content
-2. ⏳ Modify `precompute_features.py` to save tiled features [1120, 1280] instead of [256, 1280]
-3. ⏳ Re-precompute (1x V100, ~30-60 min) → retrain at lr=1e-5 with reduced max_seq_length
+**Current Step: Await job 225091 final metrics, then proceed to Phase 2b**
+1. ⏳ Job 225091 finishes → check G4/G6 with rep penalty (expect G4 PASS, G6 PASS, G5 FAIL)
+2. ⏳ If G4+G6 pass → declare Phase 2a done, begin Phase 2b planning (H100, LoRA)
+3. G5 intentionally deferred to Phase 2b (requires unfreezing LLM weights)
 
 ---
 

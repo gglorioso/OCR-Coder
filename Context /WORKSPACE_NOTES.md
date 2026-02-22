@@ -399,17 +399,24 @@ A three-phase hybrid workflow combining vision and text:
       Visual tokens carry coarse domain/structure but not specific identifiers.
     - Checkpoint: `./checkpoints/phase2a_v5/best.pt`
 
-15. **⏳ NEXT:** Enable tiling, re-precompute features, retrain (v6)
-    - Modify `precompute_features.py`: save tiled [1120, 1280] features instead of [256, 1280]
-    - Re-precompute all features (both original + data_v2): ~30-60 min on 1x V100
-    - Update `train_projector.py`: reduce `max_seq_length` to fit 1120 visual tokens
-    - Retrain at lr=1e-5, 2 epochs → `./checkpoints/phase2a_v6/`
-    - Expected: 20:1 compression vs 88:1 → model can recover specific identifier names
+15. **✅ COMPLETED (2026-02-22):** Phase 2a v6 — tiling + full eval
+    - Tiled features: 720 tokens/image (5×144, actual encoder output), saved to `./precomputed_features_tiled/`
+    - Training (job 224288): 8x V100, lr=1e-5, 2 epochs, best val_loss=1.3739
+    - Full eval (job 224872, 2086 ex): G4=0.2831 PASS, G5=0.011 FAIL, G6=0.0893 FAIL
+    - G6 failure root cause: `description` task generates `"""` repetition loop (405 examples × 100 tokens)
+    - Fix applied: repetition_penalty=1.3 in `generate_one`; resumed eval (job 225091) for description examples only
+    - G5 root cause: frozen LLM uses pretraining priors, can't read specific identifiers → Phase 2b problem
+    - Eval script improvements: incremental saves, resume by ID, `--repetition_penalty` arg
 
-16. **Medium-term:** Scale data and Phase 2b
+16. **⏳ NEXT:** Await job 225091 → Phase 2b decision
+    - Job 225091: 405 description examples with rep_penalty=1.3, resuming from `eval_results_v6.json`
+    - Expected: G4 PASS, G6 PASS (rep penalty breaks loops), G5 FAIL (accepted)
+    - If G4+G6 pass → declare Phase 2a done, begin Phase 2b on H100
+    - Phase 2b: adapter + LoRA fine-tuning, unfreezes LLM weights → fixes G5
+
+17. **Medium-term:** Phase 2b and data scaling
    - Scale training data to 50K–100K examples using advanced pipeline
-   - If Phase 2a gates pass → proceed to Phase 2b (adapter + LoRA on H100)
-   - Phase 2b: Instruction fine-tuning (~12–18 hours on H100)
+   - Phase 2b: LoRA on H100 (~12–18 hours), fixes identifier reading (G5)
 
 17. **Future:** Evaluate Sniper method in Phase 4
    - Compare direct vision-to-patch vs hybrid approach

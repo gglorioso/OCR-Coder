@@ -30,8 +30,8 @@ cat "Data Crawling/output/manifests/val.jsonl" "data_v2/manifests/val.jsonl" > "
 echo "Combined val: $(wc -l < "$COMBINED_VAL") examples (using first 15)"
 
 "$PYTHON" coder_vl/evaluate_phase2a.py \
-    --checkpoint ./checkpoints/phase2a_v5/best.pt \
-    --features_dir ./precomputed_features \
+    --checkpoint ./checkpoints/phase2a_v6/best.pt \
+    --features_dir ./precomputed_features_tiled \
     --val_manifest "$COMBINED_VAL" \
     --max_new_tokens 256 \
     --max_samples 15

@@ -647,6 +647,8 @@ These are non-blocking but should be resolved before Phase 2b:
 
 ## 15) Changelog
 
+- 2026-02-22: **Phase 2a v6 eval complete.** Tiled features (720 tok/img, 5×144), job 224288 val_loss=1.3739. Full eval (job 224872): G4=0.2831 PASS, G5=0.011 FAIL, G6=0.0893 FAIL. G6 failure from `description` task `"""` loops; fix: repetition_penalty=1.3 (job 225091 running). G5 confirmed unfixable at Phase 2a (frozen LLM priors). Eval script upgraded: incremental saves, resume support. G5 deferred to Phase 2b (LoRA).
+
 - 2026-02-09: **Major revision.** Added Rosie infrastructure specs (Section 2), token integration strategy (Section 3), concrete training hyperparameters (Section 5), memory budget tables (Section 6), quantitative pass/fail gates (Section 8), adapter ablation matrix (Section 9), LoRA design rationale (Section 12), and implementation order (Section 14). Resolved all cross-document inconsistencies. Removed vague language from gates. Confirmed V100 is not viable; H100 required.
 - 2026-02-09: Created Phase 2 runbook for cross-instance continuity, added Rosie policy snapshot, and standardized experiment tracking format.
 - 2026-02-09: **Data & encoder revision.** Scaled Phase 2a alignment from 10K→50K–100K examples using AST-based label generation (no API needed). Added vision encoder extraction step (extract from full DeepSeek-OCR-2, discard language decoder, ~2 GB vs ~26 GB). Fixed line numbers to "No" with rationale (Section 7.5). Expanded file size distribution to include large files (500–2500 lines). Updated memory budgets and training time estimates accordingly.

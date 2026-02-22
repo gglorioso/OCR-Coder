@@ -3,15 +3,16 @@
 #SBATCH --partition=dgx
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=8
-#SBATCH --time=08:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=2a_eval.out
 #SBATCH --error=2a_eval.err
 #SBATCH --mail-user=gloriosog@msoe.edu
 #SBATCH --mail-type=END,FAIL
 
 # Phase 2a Evaluation: Gates G4 (ROUGE-L), G5 (exact-match), G6 (Distinct-1)
-# Prereq: training complete, best.pt exists in ./checkpoints/phase2a_v5/
-# Expected: ~30-60 min on 1x V100 (2086 combined val examples, greedy generation)
+# Prereq: training complete, best.pt exists in ./checkpoints/phase2a_v6/
+# Expected: ~14-16 hours on 1x V100 (2086 val examples, max_new_tokens=100)
+# Saves partial results to ./eval_results_v6.json every 100 examples (resumable).
 
 echo "=================================================="
 echo "Phase 2a: Evaluation (G4/G5/G6)"
@@ -32,10 +33,13 @@ cat "Data Crawling/output/manifests/val.jsonl" "data_v2/manifests/val.jsonl" > "
 echo "Combined val: $(wc -l < "$COMBINED_VAL") examples"
 
 "$PYTHON" coder_vl/evaluate_phase2a.py \
-    --checkpoint ./checkpoints/phase2a_v5/best.pt \
-    --features_dir ./precomputed_features \
+    --checkpoint ./checkpoints/phase2a_v6/best.pt \
+    --features_dir ./precomputed_features_tiled \
     --val_manifest "$COMBINED_VAL" \
-    --max_new_tokens 256
+    --max_new_tokens 100 \
+    --repetition_penalty 1.3 \
+    --save_file ./eval_results_v6.json \
+    --save_every 100
 
 EXIT_CODE=$?
 rm -f "$COMBINED_VAL"
