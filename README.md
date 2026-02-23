@@ -26,7 +26,7 @@ Code images (from repo files)
 
 ![DeepSeek-Coder-VL: Vision-to-Code Embedding Transplant](images/architecture-overview.png)
 
-We use a **Sniper Method** that separates scale (vision) from fidelity (text): first localize the bug over the whole repo with compressed visual tokens, then pivot to raw text only for the localized file to produce a character-perfect patch.
+I plan to use a **Sniper Method** that separates scale (vision) from fidelity (text): first localize the bug over the whole repo with compressed visual tokens, then pivot to raw text only for the localized file to produce a character-perfect patch. This hybrid design is inspired by the coverage–fidelity trade-offs and code-as-vision paradigm in CodeOCR (Shi et al., 2026) and LongCodeOCR (2026); my pipeline, model choices, and staging are my own.
 
 ![The Sniper Method: Scale vs. Fidelity](images/sniper-method.png)
 
@@ -57,7 +57,6 @@ By task type, overlap is strongest on **import listing** (0.45) and **function l
   **Expectation:** Phase 2b should significantly improve exact-match because LoRA gives the code model a small, trainable set of weights that can *adapt its internal representations* to the visual token stream. In Phase 2a, the model can learn the “shape” of the answer, but it struggles to reliably bind visual evidence to the exact symbol-level output (e.g., precise function names). Allowing limited fine-tuning of the code model is intended to improve that symbol grounding while keeping training computationally feasible.
   
   **Why this staged technique:** freezing the large models first isolates whether the visual pathway carries useful signal and provides a stable baseline; then Phase 2b adds controlled capacity (LoRA) to close the gap on exact-match without fully fine-tuning the entire model.
-
 ---
 
 The long-term goal is a practical, open-weights agent that can tackle SWE-bench–style bugs by **seeing entire repositories at once** rather than peeking at a few files at a time.
