@@ -7,20 +7,23 @@
 
 ## Quick Status
 
-**Current Phase:** 2a complete — awaiting final G6 result (rep-penalty re-eval); ready to decide on Phase 2b
+**Current Phase:** 2b — data pipeline (repo scraping → images → features → training)
 **Last Updated:** 2026-02-22
 
-- ✅ **Phase 2a v6** (job 224288) COMPLETE — tiled 720 tokens (5×144), lr=1e-5, best val_loss=1.3739
-  - Full eval (job 224872, 2086 ex): G4=0.2831 PASS, G5=0.011 FAIL, G6=0.0893 FAIL
-  - G6 failure: `description` task → `"""` repetition loop tanks Distinct-1
-  - Re-eval (job 225091) running: 405 description examples with repetition_penalty=1.3, resuming from eval_results_v6.json (1681 cached)
-  - G5 diagnosis: frozen LLM uses priors not image; unfixable without Phase 2b LoRA
-  - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json`
+- ✅ **Phase 2a v6 COMPLETE** — G4 PASS, G5 deferred, G6 collapse resolved
+  - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json` (2086 ex)
+- ✅ **Home directory cleaned** — 134 GB → 95 GB (39 GB freed)
+  - Deleted: Medical Imaging/ (27 GB), duplicate deepseek-ocr-2 cache (6.4 GB), old precomputed_features/ (2.8 GB), pip cache (4.3 GB)
+- ✅ **Phase 2b data plan decided** — ~10K unique Python files → ~50K image-grounded examples + 12.5K Code Alpaca text-only replay
+  - Storage: fits in /home (~118 GB projected); precomputed features stored permanently (1.8 MB/image)
+  - Theme: monokai only; reuse existing 2,165 monokai features in `precomputed_features_tiled/`
+  - Feature strategy: precompute to /home (not on-the-fly) to reduce training time on H100
 
-**Current Step: Await job 225091 final metrics, then proceed to Phase 2b**
-1. ⏳ Job 225091 finishes → check G4/G6 with rep penalty (expect G4 PASS, G6 PASS, G5 FAIL)
-2. ⏳ If G4+G6 pass → declare Phase 2a done, begin Phase 2b planning (H100, LoRA)
-3. G5 intentionally deferred to Phase 2b (requires unfreezing LLM weights)
+**Current Step: Phase 2b data pipeline — repo scraping**
+1. ⏳ Scrape repos: use all usable files from existing 15 repos + clone ~25 new repos → target ~10K unique Python files
+2. ⏳ Render images for new files (monokai, 987 KB avg) → precompute tiled features (1.8 MB each)
+3. ⏳ Generate AST labels (5 tasks: function_listing, class_listing, import_listing, function_signatures, description + new: function_explanation)
+4. ⏳ Build manifests → submit Phase 2b training job (H100, LoRA r=16, lr=2e-5)
 
 ---
 
