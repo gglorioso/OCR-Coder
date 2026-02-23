@@ -25,7 +25,7 @@ Or infer from conversation if obvious.
 
 ## 3. Commit and Push Changes
 
-After updating documentation:
+After updating documentation: use only the commit message below — **do not add Co-authored-by or any other attribution lines**.
 ```bash
 # Check if there are changes to commit
 git status --short

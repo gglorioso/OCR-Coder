@@ -437,16 +437,18 @@ A three-phase hybrid workflow combining vision and text:
     - train: 40,083 (13 repos) | val: 2,018 (pandas) | test: 2,994 (scikit-learn)
     - Runtime: ~2h on teaching node dh-node9
 
-19. **⏳ NEXT: Submit precompute job**
-    - Command: `sbatch coder_vl/precompute_2b.sh`
-    - Expected: ~2-4h on dgx (1× V100)
-    - Outputs: new `.pt` files in `precomputed_features_tiled/`
+19. **✅ COMPLETED (2026-02-23):** Precompute job 225264 — 9,469/9,470 images processed
+    - 1 error: same decompression bomb (transformers udop file) — expected, not a concern
+    - All features [720, 1280] fp16; 11,634 monokai .pt files in `precomputed_features_tiled/`
 
-18. **⏳ Phase 2b training** — after data pipeline complete
-    - Hardware: `dgxh100` partition (1× H100 80GB), `--time=20:00:00` + chain job backup
-    - Init: adapter from `./checkpoints/phase2a_v6/best.pt`, LoRA r=16 attention layers
-    - Vision encoder runs on-the-fly OR load precomputed features from `precomputed_features_tiled/`
-    - Expected fix: LoRA unfreezes LLM → model reads specific identifiers → G5 PASS
+20. **⏳ NEXT: Write Phase 2b training scripts**
+    - `coder_vl/train_phase2b.py` — 4-bit QLoRA + DDP (2 GPU), auto-resume, 30-min checkpoints
+    - `coder_vl/train_phase2b.sh` — dgx, 2× V100, 24h, data_v2b manifests
+    - See HANDOFF_NOTES.md for full script spec written this session
+    - Pre-req: `pip install peft` (not installed in deepseek-ocr env)
+    - Key finding: LoRA targets are `q_proj`, `kv_a_proj_with_mqa`, `kv_b_proj`, `o_proj`
+      (plan doc had WRONG names — q_lora_rank=None in Lite means q_proj, not q_a_proj/q_b_proj)
+    - Memory: ~11.9 GB / 32 GB V100; training time: ~13h on 2× V100
 
 18. **Future:** Evaluate Sniper method in Phase 4
    - Compare direct vision-to-patch vs hybrid approach

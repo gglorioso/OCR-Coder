@@ -7,23 +7,23 @@
 
 ## Quick Status
 
-**Current Phase:** 2b — data pipeline (precompute features next)
+**Current Phase:** 2b — ready to write training scripts
 **Last Updated:** 2026-02-23
 
 - ✅ **Phase 2a v6 COMPLETE** — G4 PASS, G5 deferred, G6 collapse resolved
   - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json` (2086 ex)
-- ✅ **Home directory cleaned** — 134 GB → 95 GB (39 GB freed)
-  - Deleted: Medical Imaging/ (27 GB), duplicate deepseek-ocr-2 cache (6.4 GB), old precomputed_features/ (2.8 GB), pip cache (4.3 GB)
-- ✅ **Phase 2b data plan decided** — ~10K unique Python files → ~50K image-grounded examples + 12.5K Code Alpaca text-only replay
-  - Storage: fits in /home (~118 GB projected); precomputed features stored permanently (1.8 MB/image)
-  - Theme: monokai only; reuse existing 2,165 monokai features in `precomputed_features_tiled/`
-  - Feature strategy: precompute to /home (not on-the-fly) to reduce training time on H100
+- ✅ **Phase 2b data pipeline COMPLETE** — 9,469/9,470 images precomputed ([720,1280] fp16), 45,095 examples
+  - train: 40,083 (13 repos) | val: 2,018 (pandas) | test: 2,994 (scikit-learn)
+  - Features in `precomputed_features_tiled/` (11,634 monokai .pt files total)
+- ✅ **Phase 2b training plan finalized** — 2× V100 (dgx), 4-bit QLoRA, ~13h, seq=260
+  - LoRA targets VERIFIED from modeling_deepseek.py: `q_proj`, `kv_a_proj_with_mqa`, `kv_b_proj`, `o_proj`
+  - (Plan doc was WRONG: q_a_proj/q_b_proj don't exist in Lite — q_lora_rank=None → uses q_proj directly)
+  - Memory: ~11.9 GB / 32 GB V100; `peft` not installed — must pip install before submit
 
-**Current Step: Phase 2b data pipeline — submit precompute job**
-1. ✅ Render job complete (job 225203): 6,923 files → 9,666 images → 45,095 examples in `data_v2b/manifests/`
-   - train: 40,083 (13 repos) | val: 2,018 (pandas) | test: 2,994 (scikit-learn)
-2. ⏳ **Submit precompute job:** `sbatch coder_vl/precompute_2b.sh` (dgx, ~2-4h) → `.pt` files in `precomputed_features_tiled/`
-3. ⏳ Build Phase 2b training script → submit H100 job (LoRA r=16, lr=2e-5)
+**Current Step: Write Phase 2b training scripts**
+1. ⏳ **Write `coder_vl/train_phase2b.py`** — 4-bit QLoRA, 2-GPU DDP, auto-resume, 30-min checkpoints
+2. ⏳ **Write `coder_vl/train_phase2b.sh`** — dgx, 2× V100, 24h, data_v2b manifests
+3. ⏳ `pip install peft` then `sbatch coder_vl/train_phase2b.sh`
 
 ---
 
