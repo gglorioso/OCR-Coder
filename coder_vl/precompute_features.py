@@ -126,6 +126,8 @@ def main():
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--tiling", action="store_true",
                         help="Enable 2x2 tiling + thumbnail (5 views, 1280 tokens vs 256)")
+    parser.add_argument("--skip_existing", action="store_true",
+                        help="Skip images whose .pt file already exists in output_dir")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -150,10 +152,16 @@ def main():
     print(f"\nEncoding images — mode: {mode}")
     token_counts = {}
     errors = []
+    n_skipped = 0
     expected_shape = None
 
     for i, img_path in enumerate(tqdm(image_paths, desc="Encoding")):
         try:
+            out_name = Path(img_path).stem + ".pt"
+            if args.skip_existing and (output_dir / out_name).exists():
+                n_skipped += 1
+                continue
+
             image = Image.open(img_path).convert("RGB")
 
             if args.tiling:
@@ -176,8 +184,8 @@ def main():
             # Track token counts
             token_counts[num_tokens] = token_counts.get(num_tokens, 0) + 1
 
-            # Verify shape on first image
-            if i == 0:
+            # Verify shape on first processed image
+            if expected_shape is None:
                 expected_shape = features.shape
                 print(f"\n  First image: {Path(img_path).name}")
                 print(f"  Output shape: {features.shape}  dtype: {features.dtype}")
@@ -189,8 +197,7 @@ def main():
                 print(f"\n  WARNING: shape mismatch on {Path(img_path).name}: "
                       f"{features.shape} vs expected {expected_shape}")
 
-            # Save: image stem -> .pt file
-            out_name = Path(img_path).stem + ".pt"
+            # Save: image stem -> .pt file  (out_name already set above)
             torch.save(features, output_dir / out_name)
 
         except Exception as e:
@@ -201,7 +208,8 @@ def main():
     print(f"\n{'='*60}")
     print("PRE-COMPUTATION COMPLETE")
     print(f"{'='*60}")
-    print(f"  Processed: {len(image_paths) - len(errors)} / {len(image_paths)}")
+    print(f"  Processed: {len(image_paths) - len(errors) - n_skipped} / {len(image_paths)}")
+    print(f"  Skipped:   {n_skipped}  (--skip_existing)")
     print(f"  Errors:    {len(errors)}")
     print(f"  Token counts per image: {token_counts}")
     print(f"  Feature dtype: {expected_shape}")

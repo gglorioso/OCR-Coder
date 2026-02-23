@@ -117,6 +117,37 @@ def convert_code_to_image(
     return str(out_path.resolve())
 
 
+def convert_string_to_image(
+    code_str: str,
+    out_path: str,
+    style: str = "monokai",
+    font_size: int = 13,
+    image_pad: int = 10,
+) -> str:
+    """
+    Render a code string directly to a PNG at the given output path.
+
+    Unlike convert_code_to_image, this accepts code as a string and writes
+    to an explicit path (not auto-named from filename stem). Used for rendering
+    file chunks with controlled naming in Phase 2b.
+
+    Returns the absolute path of the written PNG.
+    """
+    font_name = find_working_font()
+    formatter = ImageFormatter(
+        style=style,
+        font_name=font_name,
+        font_size=font_size,
+        line_numbers=False,
+        image_pad=image_pad,
+    )
+    image_bytes = highlight(code_str, PythonLexer(), formatter)
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(image_bytes)
+    return str(out.resolve())
+
+
 def convert_all_styles(
     code_file_path: str,
     output_dir: str = "./code_images",

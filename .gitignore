@@ -27,8 +27,10 @@ precomputed_features_tiled/
 
 # Additional data directories
 data_v2/
+data_v2b/
 
-# Diagnostic/test results
+# Eval results
+eval_results*.json
 diagnostic_results.json
 
 ########################

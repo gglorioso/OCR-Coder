@@ -7,8 +7,8 @@
 
 ## Quick Status
 
-**Current Phase:** 2b — data pipeline (repo scraping → images → features → training)
-**Last Updated:** 2026-02-22
+**Current Phase:** 2b — data pipeline (precompute features next)
+**Last Updated:** 2026-02-23
 
 - ✅ **Phase 2a v6 COMPLETE** — G4 PASS, G5 deferred, G6 collapse resolved
   - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json` (2086 ex)
@@ -19,11 +19,11 @@
   - Theme: monokai only; reuse existing 2,165 monokai features in `precomputed_features_tiled/`
   - Feature strategy: precompute to /home (not on-the-fly) to reduce training time on H100
 
-**Current Step: Phase 2b data pipeline — repo scraping**
-1. ⏳ Scrape repos: use all usable files from existing 15 repos + clone ~25 new repos → target ~10K unique Python files
-2. ⏳ Render images for new files (monokai, 987 KB avg) → precompute tiled features (1.8 MB each)
-3. ⏳ Generate AST labels (5 tasks: function_listing, class_listing, import_listing, function_signatures, description + new: function_explanation)
-4. ⏳ Build manifests → submit Phase 2b training job (H100, LoRA r=16, lr=2e-5)
+**Current Step: Phase 2b data pipeline — submit precompute job**
+1. ✅ Render job complete (job 225203): 6,923 files → 9,666 images → 45,095 examples in `data_v2b/manifests/`
+   - train: 40,083 (13 repos) | val: 2,018 (pandas) | test: 2,994 (scikit-learn)
+2. ⏳ **Submit precompute job:** `sbatch coder_vl/precompute_2b.sh` (dgx, ~2-4h) → `.pt` files in `precomputed_features_tiled/`
+3. ⏳ Build Phase 2b training script → submit H100 job (LoRA r=16, lr=2e-5)
 
 ---
 

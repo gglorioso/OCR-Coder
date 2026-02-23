@@ -416,16 +416,31 @@ A three-phase hybrid workflow combining vision and text:
       - G6's purpose (detect collapsed degenerate outputs) is fully satisfied: per-example diversity is near-perfect
     - **DECISION: Phase 2a complete. Greenlit for Phase 2b.**
 
-17. **⏳ NEXT: Phase 2b data pipeline — repo scraping (new instance)**
-    - Target: ~10K unique Python files → ~50K image-grounded examples + 12.5K Code Alpaca text-only
-    - Step 1: Use ALL usable files from existing 15 repos in `Scraped Repos/` (filter: 50-2500 lines, AST valid, not test/vendored/generated) — est. 4K-6K files
-    - Step 2: If insufficient, shallow-clone ~25 more repos (rich, typer, sqlalchemy, celery, aiohttp, starlette, uvicorn, pytest, mypy, ruff, attrs, httpcore, anyio, sympy, matplotlib, pillow, networkx, cryptography, boto3, etc.) — target ~10K total
-    - Step 3: Render new images (monokai, no line numbers, 13pt, 500-line chunks) — reuse existing 2,175 monokai PNGs
-    - Step 4: Precompute tiled features for new images → store in `precomputed_features_tiled/` (same naming: `{stem}_monokai.pt`)
-    - Step 5: Generate AST labels (6 task types incl. new `function_explanation` using per-function docstrings)
-    - Step 6: Build JSONL manifests → 90/5/5 repo-level split
-    - Storage: ~118 GB projected total in /home (95 GB current + ~23 GB new); filesystem has 3.2 TB free
-    - Training (after data): `dgxh100` partition, 1× H100 80GB, LoRA r=16 on attention, lr=2e-5, 2 epochs, ~12-18h
+17. **✅ COMPLETED (2026-02-22):** Phase 2b data pipeline scripts written
+    - **Files created:**
+      - `code_to_image.py`: added `convert_string_to_image(code_str, out_path, ...)` for chunk rendering
+      - `Data Crawling/data_gen_2b.py`: full pipeline (discover → chunk → render → label → manifest)
+      - `Data Crawling/data_gen_2b.sh`: SLURM job (teaching, 16 CPUs, 8h)
+      - `coder_vl/precompute_2b.sh`: SLURM GPU job (dgx, 4h, --skip_existing)
+      - `coder_vl/precompute_features.py`: added `--skip_existing` flag
+    - **Design:**
+      - 6,954 valid Python files from existing 15 repos (all pass filter)
+      - Chunking: 500 lines/image; 1 chunk if ≤500 lines, N chunks if longer
+      - Naming: `{repo}__{relpath}[_c{N}]_monokai.{png,pt}` (unique, no collision)
+      - 6 tasks per chunk: function_listing, class_listing, import_listing, function_signatures, description, function_explanation
+      - Repo-level split: 13 train / 1 val / 1 test repos
+      - Idempotent: skips already-rendered images; precompute skips existing .pt files
+    - **Expected output:** ~50K image-grounded examples in `data_v2b/manifests/`
+
+18. **✅ COMPLETED (2026-02-23):** Render job 225203 — 9,666 images, 45,095 examples
+    - 6,923 unique Python files → 9,666 chunked images (500-line chunks), 0 failures
+    - train: 40,083 (13 repos) | val: 2,018 (pandas) | test: 2,994 (scikit-learn)
+    - Runtime: ~2h on teaching node dh-node9
+
+19. **⏳ NEXT: Submit precompute job**
+    - Command: `sbatch coder_vl/precompute_2b.sh`
+    - Expected: ~2-4h on dgx (1× V100)
+    - Outputs: new `.pt` files in `precomputed_features_tiled/`
 
 18. **⏳ Phase 2b training** — after data pipeline complete
     - Hardware: `dgxh100` partition (1× H100 80GB), `--time=20:00:00` + chain job backup
