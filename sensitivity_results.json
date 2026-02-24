@@ -1,0 +1,510 @@
+{
+  "summary": {
+    "n": 50,
+    "n_identical": 0,
+    "mean_similarity": 0.335,
+    "median_similarity": 0.45
+  },
+  "results": [
+    {
+      "id": "pandas__holiday_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__tseries__holiday_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__ops__array_ops_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test_samepadder567890aabbccddffeehhiijjkkllmmnnppooqqrrssuuuuvvwwxxxyyyzzzdddvvvaaaabbbcccddddffffgggghhhi",
+      "out_swapped": "This function is called by an external library. Its signature should not be documented.\n\nReturns theaprovaciationofthisdatetimeinseconds,or-1ifthetimeisnotapprovableaccordingtothelawsoftheskyandthemoonasunderstoodbyourancestorswhohadtobeupatnighttosailtheirshipsintothefoggyseasonswhichwerenothingsomuchast",
+      "similarity": 0.0769,
+      "identical": false
+    },
+    {
+      "id": "pandas__frame_methods_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__asv_bench__benchmarks__frame_methods_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__tseries__holiday_c0_monokai.pt",
+      "out_correct": "This comment should be ignored. This is a test for #1234567890, this one too: https://github.com/pytorch-lightning/metrics_examples#example \u0420\u0430\u0437\u043f\u043e\u0437\u043d\u0430\u0432\u0430\u043d\u0435 \u043d\u0430 \u0442\u0435\u043a\u0441\u0442\u0430 (Text Recognition) \u0441 PyTorch Lightning \u0438 Transformers - \u0447\u0430\u0441\u0442 \u21161",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test_samepadder567890aabbccddffeehhiijjkkllmmnnppooqqrrssuuuuvvwwxxxyyyzzzdddvvvaaaabbbcccddddffffgggghhhi",
+      "similarity": 0.0526,
+      "identical": false
+    },
+    {
+      "id": "pandas__check_for_inconsistent_pandas_namespace__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__scripts__check_for_inconsistent_pandas_namespace_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__groupby__ops_c1_monokai.pt",
+      "out_correct": "This file defines 4 modules: data, model_utils.py327680159e-fastest__generation_, utils/data/__init__.pypytorchvision._internal.__version__, torchviz/_convertor_.cpythonmodule_generatewrappertypeinfo",
+      "out_swapped": "This file defines the following functions:\n1. get_device(self)\n2. setattr(__class__, name, value)\n3._getitem__(key_)\n4.__setstate__()\n5. _load(_cls_, stateDictPathOrFileObj, mapLocationFnArgsKwargsListForLoadsInStatesOfModulesAndBuffersToDeviceIfNecess",
+      "similarity": 0.2222,
+      "identical": false
+    },
+    {
+      "id": "pandas___base_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__excel___base_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__plotting___matplotlib__boxplot_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d__withpadding(self)\n2. _testcase03a()\n3._testcase4b5c6e7f8g9h(__class__, self, device_, dtype_)\n4. __init__(cls, name, bases, attrs, **kwargs)\n5. setUpClassWith",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, args0_, kwargs_)\n3._run()\n4. runTestWithArgsAndKwargsWithNoArgumentsInOrderFromClassToChildClassesFirstThenGrandChildrenLastWithoutOverridingRunMethodOrAnyOtherTestsInsideItSelfIsFineBut",
+      "similarity": 0.5263,
+      "identical": false
+    },
+    {
+      "id": "pandas__dataframe_protocol__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__interchange__dataframe_protocol_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__indexes__period_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test__kernelize05a6b8c9e7f \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u043d\u0438\u0435_(data, expecteds_, dtype_)\n3._checkkwargsinplaceopmodeonly()\n4. __init__(cls, name, bases, dct)",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5b0c6e7f8g9h(__file__)\n4. __init__(cls, name, bases, dct_)\ndef setUpClass(klass):\n    klass.__call__ = lambda self_,",
+      "similarity": 0.5854,
+      "identical": false
+    },
+    {
+      "id": "pandas__boxplot_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__plotting___matplotlib__boxplot_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__arrays__sparse__array_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, args0_, kwargs_)\n3._run()\n4. runTestWithArgsAndKwargsWithNoArgumentsInOrderFromClassToChildClassesFirstThenGrandChildrenLastWithoutOverridingRunMethodOrAnyOtherTestsInsideItSelfIsFineBut",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, key_)\n3._setattr_(name_, value__)\n4.__init__(key__, default=None)\n5. __repr__(a0)\n6. get()\n7. setdefault(__value=_sentinel())\n8. has",
+      "similarity": 0.4615,
+      "identical": false
+    },
+    {
+      "id": "pandas__csv_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__asv_bench__benchmarks__io__csv_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__tools__datetimes_c2_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442 (https://github.com/django-imports/tests/) # noqa E501\n3. __init__(cls, name, bases, attrs)\n4.",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d3x4(device)\n2. _test__functionalize(__class__, device, dtype_)\n3. __init__(self, functionalized_, inplaceable_)\n5. forward_(cls, x0s, weights, bias, stride, padding, dilation, groups, convtype__)\n6",
+      "similarity": 0.375,
+      "identical": false
+    },
+    {
+      "id": "pandas__algorithms__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__asv_bench__benchmarks__algorithms_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__scripts__check_for_inconsistent_pandas_namespace_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs()\n3._runTestWithArgsAndKwargNamesInOrderWithoutDefaultsOrPositionalOnlyParamsBeforeKWARGS4096TestsPerBatchForEachParamSetTestingAllCombinationsOfParametersIncludingNoArgumentsCaseInsensitiveMatchingBetweenParameterNameStringsUsingRegexes",
+      "out_swapped": "This file defines 4 modules: data, model_utils.py327680159e-fastest__generation_, utils/data/__init__.pypytorchvision._internal.__version__, torchviz/_convertor_.cpythonmodule_generatewrappertypeinfo",
+      "similarity": 0.3,
+      "identical": false
+    },
+    {
+      "id": "pandas__ops_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__groupby__ops_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__ops__missing_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. get_device(self)\n2. setattr(__class__, name, value)\n3._getitem__(key_)\n4.__setstate__()\n5. _load(_cls_, stateDictPathOrFileObj, mapLocationFnArgsKwargsListForLoadsInStatesOfModulesAndBuffersToDeviceIfNecess",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5thdim corresponia fonamentalment \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430s6e7f8g9h0i__inplace(__class__, self, a_, b_)\n4. __init__(cls, name, bases, dctnkwdsdict",
+      "similarity": 0.45,
+      "identical": false
+    },
+    {
+      "id": "pandas__accessor_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__accessor_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas___version_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d(device)\n2. _test__depthwise3x5m4n8k6c7s0v9a()\n3. __init__(self, device_)\n4. forward_(cls_, x)\n5. backward_(losses, gradients)\nclass TestDepthWiseConv",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d(device)\n2. _test__forwarding \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430ngs3x4()\n3._generate_input(_batch, device_)\ndef __init__(self_, inplace=False): super().super(__inited__, self_).register(\"backward\", lambda x_: torch.__internal__.functionalization_.",
+      "similarity": 0.4762,
+      "identical": false
+    },
+    {
+      "id": "pandas__array_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arrays__sparse__array_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__ops__array_ops_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, key_)\n3._setattr_(name_, value__)\n4.__init__(key__, default=None)\n5. __repr__(a0)\n6. get()\n7. setdefault(__value=_sentinel())\n8. has",
+      "out_swapped": "This function is called by an external library. Its signature should not be documented.\n\nReturns theaprovaciationofthisdatetimeinseconds,or-1ifthetimeisnotapprovableaccordingtothelawsoftheskyandthemoonasunderstoodbyourancestorswhohadtobeupatnighttosailtheirshipsintothefoggyseasonswhichwerenothingsomuchast",
+      "similarity": 0.0513,
+      "identical": false
+    },
+    {
+      "id": "pandas___json_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__json___json_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__accessor_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, self)\n3. __init__(this_, other_)\n4. getstate_(obj0x89765aefcdeffdca\u4e0d\u8d77\u6765)\n5. setattr(__name__, \"__module__\", \"foo\")\n6",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d(device)\n2. _test__depthwise3x5m4n8k6c7s0v9a()\n3. __init__(self, device_)\n4. forward_(cls_, x)\n5. backward_(losses, gradients)\nclass TestDepthWiseConv",
+      "similarity": 0.5238,
+      "identical": false
+    },
+    {
+      "id": "pandas__string_arrow_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arrays__string_arrow_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__util___print_versions_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d(device)\n2. _test__functionalize(__class__, device, dtype_)\n3._run()\n4. runTestWithDeviceAndDtypeInPlaceKwargsForFunctionalizedOpsTests(_Class_, backendnamekwargssuffixsufxlistofdevicesanddtypeinplacekwargsdict",
+      "out_swapped": "This file defines the following functions:\n1. test_basic()\n2. _test(device, dtype)\n3. runTestsOnDeviceAndDtypeTypesInParallelWithDifferentSeedPerTestRunForEachBackendTypeUsingAllDevicesExceptXlaBackendsIfAvailableWithoutOverridingTheDefaultRandomStateByPassingAnExplicitOneToEnsureReproducibilityOfResultsAcross",
+      "similarity": 0.5517,
+      "identical": false
+    },
+    {
+      "id": "pandas__range_c2__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__indexes__range_c2_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__groupby__ops_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs__(cls, device0_, dtype_)\n3._run_(device0_, shape__, ndim__)\n4.__init__(name, fnlistgenfnargdictsfuncnameshapeandndimnumelementsdtypekwds\u5c3f\u88e4\u5b50\u548caoutofplaceflagsw",
+      "out_swapped": "This file defines the following functions:\n1. get_device(self)\n2. setattr(__class__, name, value)\n3._getitem__(key_)\n4.__setstate__()\n5. _load(_cls_, stateDictPathOrFileObj, mapLocationFnArgsKwargsListForLoadsInStatesOfModulesAndBuffersToDeviceIfNecess",
+      "similarity": 0.4571,
+      "identical": false
+    },
+    {
+      "id": "pandas__missing_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__missing_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__scripts__check_for_inconsistent_pandas_namespace_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. get_device(module)\n2. isinplace()\n3. setattr_(self, key_, value_)\n4. __init__(name, device=None, dtype=<class 'torch._C.Dtype'>)\n5. _getitem__(_key__)\n6. tolist(*args, **kwargs",
+      "out_swapped": "This file defines 4 modules: data, model_utils.py327680159e-fastest__generation_, utils/data/__init__.pypytorchvision._internal.__version__, torchviz/_convertor_.cpythonmodule_generatewrappertypeinfo",
+      "similarity": 0.1818,
+      "identical": false
+    },
+    {
+      "id": "pandas__html_c2__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__html_c2_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__io__sas__sasreader_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, *extra_)\n3. __init__(cls_, name, bases, dct)\n4. addattrlistallmethods()\n5. getattrsfromsuperclassesofmodulelevelfunctionsonlyinthisfileanditssubmodules(_modul",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, key_)\n3._setattr_(name_, value__)\n4.__init__(key__, default=None)\n5. __repr__(obj)\n6. get()\n7. setdefault(__value=_sentinel())\n8. hashing",
+      "similarity": 0.4545,
+      "identical": false
+    },
+    {
+      "id": "pandas__frequencies_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__tseries__frequencies_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__ops__missing_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs()\n3._getattr(__qualname__)\n4.__init__(cls, name_, bases_)\n5. \u0434\u044a\u0449\u0435\u0440\u044b\u0432\u0430\u0442\u044c(_classify())\n6. tearDownClass()\n7. setUpTestData(klass)\n8. assertEqualWithMessageAnd",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5thdim corresponia fonamentalment \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430s6e7f8g9h0i__inplace(__class__, self, a_, b_)\n4. __init__(cls, name, bases, dctnkwdsdict",
+      "similarity": 0.3636,
+      "identical": false
+    },
+    {
+      "id": "pandas__excel__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__asv_bench__benchmarks__io__excel_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__scripts__check_for_inconsistent_pandas_namespace_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_many2one(self)\n2. create()\n3. update(_selected, _value_)\n4. delete(__obj__)\n5. get__name__(cls)\n6. set___docstring_(klass_, docstrs)\n7. __init__(dataframe0a \u0441\u044a\u0441\u0442\u0430\u0432\u044fctrine \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442 selected value",
+      "out_swapped": "This file defines 4 modules: data, model_utils.py327680159e-fastest__generation_, utils/data/__init__.pypytorchvision._internal.__version__, torchviz/_convertor_.cpythonmodule_generatewrappertypeinfo",
+      "similarity": 0.1714,
+      "identical": false
+    },
+    {
+      "id": "pandas__arraylike_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arraylike_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__asv_bench__benchmarks__tslibs__timedelta_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. get_device(use)\n2. _getattr(__self__, name, default=None)\n3. __init__(name_, device_)\n4. to(_tensorizeable__)\n5. from_(__value__)\n6. isinlist()\n7. setisintypehintflag(*args)\n8",
+      "out_swapped": "Name: __init__\nSource: /home/runner/work/django-orms2019q3_testcases.git/.github/_actions/__pycache__.typingtestsmodule48567a_.typedispatchmethoddecoratorclassmeta.__str__(self) -> str, type[_T]",
+      "similarity": 0.0,
+      "identical": false
+    },
+    {
+      "id": "pandas__interval_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arrays__interval_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__indexes__range_c2_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(device)\n2. _test3x4aovs()\n3. __init__(self, device_)\n4. forward_(batchsize_, height0__, width0__)\n5._forward__impl(__notpacked=False)\n6.__call__(height0__, batchszie_, widths",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs__(cls, device0_, dtype_)\n3._run_(device0_, shape__, ndim__)\n4.__init__(name, fnlistgenfnargdictsfuncnameshapeandndimnumelementsdtypekwds\u5c3f\u88e4\u5b50\u548caoutofplaceflagsw",
+      "similarity": 0.4211,
+      "identical": false
+    },
+    {
+      "id": "pandas__sasreader__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__sas__sasreader_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__arrays__numpy__c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, key_)\n3._setattr_(name_, value__)\n4.__init__(key__, default=None)\n5. __repr__(obj)\n6. get()\n7. setdefault(__value=_sentinel())\n8. hashing",
+      "out_swapped": "This file defines the following functions:\n1. test_manytomanyfield(self)\n2. create_models()\n3. setUpTestData(cls, apps)\n4. tearDownClass(cls)\n5. getSchemaForTableWithPKsAndFKeysOnlyInOneModelWithoutAutoIncrementOnPrimaryKeyFieldTestsByUsingRawSQLQueryBuilderAgainstPostgreSQLBackend",
+      "similarity": 0.45,
+      "identical": false
+    },
+    {
+      "id": "pandas__putmask__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__array_algos__putmask_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__io__html_c2_monokai.pt",
+      "out_correct": "## Variables\n:param dtype_in1a2b3c4d5e6f7g8h9i0jnamevalueexpectedoutputdtypeoutsizeindexeranknansizeisnanallcloserelerrormeanstdmaxmin comparteixutputonlyifsameasinputdataoptionalboolflagtoindicatewhethertocomparetheresultwithoriginaldataindicates",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, *extra_)\n3. __init__(cls_, name, bases, dct)\n4. addattrlistallmethods()\n5. getattrsfromsuperclassesofmodulelevelfunctionsonlyinthisfileanditssubmodules(_modul",
+      "similarity": 0.0,
+      "identical": false
+    },
+    {
+      "id": "pandas__expr_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__computation__expr_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__indexes__range_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(device)\n2. _test3x4a()\n3._check650b(__self__, device, dtype_)\n4. __init__(name_, funcreflist__)\n5. getitem_(indexer)\n6. setattr__getattribute___withargs(*argnamesin",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2darrayviewset(self)\n2. get3dtupleelementtype()\n3. __init__(cls, name_, bases_)\n4. _getitem_(indexer0x5a98f6e7cddbffefdbecadabacdeba\u4e0d\u8d77\u6765__str__)",
+      "similarity": 0.5,
+      "identical": false
+    },
+    {
+      "id": "pandas__timedelta__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__asv_bench__benchmarks__tslibs__timedelta_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__asv_bench__benchmarks__io__csv_c0_monokai.pt",
+      "out_correct": "Name: __init__\nSource: /home/runner/work/django-orms2019q3_testcases.git/.github/_actions/__pycache__.typingtestsmodule48567a_.typedispatchmethoddecoratorclassmeta.__str__(self) -> str, type[_T]",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442 (https://github.com/django-imports/tests/) # noqa E501\n3. __init__(cls, name, bases, attrs)\n4.",
+      "similarity": 0.0,
+      "identical": false
+    },
+    {
+      "id": "pandas__missing__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__ops__missing_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__computation__expr_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5thdim corresponia fonamentalment \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430s6e7f8g9h0i__inplace(__class__, self, a_, b_)\n4. __init__(cls, name, bases, dctnkwdsdict",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(device)\n2. _test3x4a()\n3._check650b(__self__, device, dtype_)\n4. __init__(name_, funcreflist__)\n5. getitem_(indexer)\n6. setattr__getattribute___withargs(*argnamesin",
+      "similarity": 0.4762,
+      "identical": false
+    },
+    {
+      "id": "pandas__excel_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__formats__excel_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__ops__array_ops_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d__noexcepts(self)\n2. _testcase0a3x5y4z6w8b9c7e_(device, dtype_, inputsize_)\ndef __init__(this, device, inpdimlist__, outchansize__)\nclass TestConvTransposeNdNo",
+      "out_swapped": "This function is called by an external library. Its signature should not be documented.\n\nReturns theaprovaciationofthisdatetimeinseconds,or-1ifthetimeisnotapprovableaccordingtothelawsoftheskyandthemoonasunderstoodbyourancestorswhohadtobeupatnighttosailtheirshipsintothefoggyseasonswhichwerenothingsomuchast",
+      "similarity": 0.0571,
+      "identical": false
+    },
+    {
+      "id": "pandas__concat__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__dtypes__concat_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__dtypes__cast_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, args0_, kwargs_)\n3. __init__(cls, name, bases, dct)\n4. getitem_(keylist__)\n5. setattr___callable(_thisdictsvaluereftypeobjectsetstateargsmethod",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442\u0441\u044f()\n3._checkresultsizeinplaceoplistoflistsintypesizehintedtupleoftuplesintsizesizedtypehintsizetupleofsizenestedtupletypeinner",
+      "similarity": 0.4706,
+      "identical": false
+    },
+    {
+      "id": "pandas__cast_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__dtypes__cast_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__plotting___core_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442\u0441\u044f()\n3._checkresultsizeinplaceoplistoflistsintypesizehintedtupleoftuplesintsizesizedtypehintsizetupleofsizenestedtupletypeinner",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test__kernelizeable \u0441\u044a\u0432\u043c\u0435\u0441\u0442\u043d\u043e\u0435\u0434\u0432\u0430\u0436\u043d\u0438\u044f_-(cls, x0_, y_)\n3. __init__(name, dtype, device, requires_grads, batchsize, inpchans, outchannels, kernelhightyheighttwidthty",
+      "similarity": 0.4706,
+      "identical": false
+    },
+    {
+      "id": "pandas___print_versions__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__util___print_versions_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__algorithms_c2_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic()\n2. _test(device, dtype)\n3. runTestsOnDeviceAndDtypeTypesInParallelWithDifferentSeedPerTestRunForEachBackendTypeUsingAllDevicesExceptXlaBackendsIfAvailableWithoutOverridingTheDefaultRandomStateByPassingAnExplicitOneToEnsureReproducibilityOfResultsAcross",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d__noexcepts(device)\n2. _testcases()\n3. __init__(self, name_, device_)\n4. runnableTestsForDeviceTypeAndVersionInnerLoopTestCasesGeneratorFnWrapperFactoryFunctionWithNameIn suggerirUnrollFactorOuterLoopsPerBatchKernelIterationsCountOfBat",
+      "similarity": 0.6,
+      "identical": false
+    },
+    {
+      "id": "pandas__interval_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arrays__interval_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__accessor_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test__kernelizeable \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430r50b6a8f9e7cdeefeefffeecfaacccddedefffdcaaccdaaaacaabbaaaaabbcccddddeeefefgghhhiiijjkkklllmmm",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d(device)\n2. _test__depthwise3x5m4n8k6c7s0v9a()\n3. __init__(self, device_)\n4. forward_(cls_, x)\n5. backward_(losses, gradients)\nclass TestDepthWiseConv",
+      "similarity": 0.5,
+      "identical": false
+    },
+    {
+      "id": "pandas__timeseries__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__asv_bench__benchmarks__timeseries_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__io__html_c2_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs__(cls, methodname, argslist_, kwargsspecs_)\n3. __init__(thisclassreferentiallystrictmodeflagsettersandgetterexpensivechecksthesearenotcalledifthemoduleisimportedtwiceinadifferentway",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, *extra_)\n3. __init__(cls_, name, bases, dct)\n4. addattrlistallmethods()\n5. getattrsfromsuperclassesofmodulelevelfunctionsonlyinthisfileanditssubmodules(_modul",
+      "similarity": 0.5556,
+      "identical": false
+    },
+    {
+      "id": "pandas__construction_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__construction_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__arrays__sparse__array_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs__(cls, args_, kwargs_)\n3. __init__(thisclassname__)\n4. get suggerirunnerclassesforconfigfiletests()\n5. runallconfigsinsubprocess(__module__, configfilenamepathliststrsargdictkwds\u5c3f\u88e4kws",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, key_)\n3._setattr_(name_, value__)\n4.__init__(key__, default=None)\n5. __repr__(a0)\n6. get()\n7. setdefault(__value=_sentinel())\n8. has",
+      "similarity": 0.4651,
+      "identical": false
+    },
+    {
+      "id": "pandas__period_c2__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arrays__period_c2_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__io__json___json_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h_(device, dtype_, outsize_)\n3._checkoutshapeanddtype()\n4. __init__(name, device, inplaceable, iscomplextypefnctypesizeofin",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, self)\n3. __init__(this_, other_)\n4. getstate_(obj0x89765aefcdeffdca\u4e0d\u8d77\u6765)\n5. setattr(__name__, \"__module__\", \"foo\")\n6",
+      "similarity": 0.4615,
+      "identical": false
+    },
+    {
+      "id": "pandas___normalize_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__json___normalize_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__dtypes__concat_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_noops(self)\n2. _test__noopify \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430ngs3d_(cls, self)\n3. __init__(class_)\n4. getitemerator()\n5. setattrterableofitems(__iter__)\n6. isemptylistelementtype(_t_, cls)\n7.",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, args0_, kwargs_)\n3. __init__(cls, name, bases, dct)\n4. getitem_(keylist__)\n5. setattr___callable(_thisdictsvaluereftypeobjectsetstateargsmethod",
+      "similarity": 0.5,
+      "identical": false
+    },
+    {
+      "id": "pandas__executor__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core___numba__executor_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__asv_bench__benchmarks__frame_methods_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442\u0441\u044f()\n3. __init__(cls, name, bases, dct)\n4. getitem__getattr_(key_)\n5. setdefaultdicts(__class__,",
+      "out_swapped": "This comment should be ignored. This is a test for #1234567890, this one too: https://github.com/pytorch-lightning/metrics_examples#example \u0420\u0430\u0437\u043f\u043e\u0437\u043d\u0430\u0432\u0430\u043d\u0435 \u043d\u0430 \u0442\u0435\u043a\u0441\u0442\u0430 (Text Recognition) \u0441 PyTorch Lightning \u0438 Transformers - \u0447\u0430\u0441\u0442 \u21161",
+      "similarity": 0.0417,
+      "identical": false
+    },
+    {
+      "id": "pandas__datetimes_c2__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__tools__datetimes_c2_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__io__json___json_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d3x4(device)\n2. _test__functionalize(__class__, device, dtype_)\n3. __init__(self, functionalized_, inplaceable_)\n5. forward_(cls, x0s, weights, bias, stride, padding, dilation, groups, convtype__)\n6",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, self)\n3. __init__(this_, other_)\n4. getstate_(obj0x89765aefcdeffdca\u4e0d\u8d77\u6765)\n5. setattr(__name__, \"__module__\", \"foo\")\n6",
+      "similarity": 0.4583,
+      "identical": false
+    },
+    {
+      "id": "pandas__array_ops_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__ops__array_ops_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__algorithms_c2_monokai.pt",
+      "out_correct": "This function is called by an external library. Its signature should not be documented.\n\nReturns theaprovaciationofthisdatetimeinseconds,or-1ifthetimeisnotapprovableaccordingtothelawsoftheskyandthemoonasunderstoodbyourancestorswhohadtobeupatnighttosailtheirshipsintothefoggyseasonswhichwerenothingsomuchast",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d__noexcepts(device)\n2. _testcases()\n3. __init__(self, name_, device_)\n4. runnableTestsForDeviceTypeAndVersionInnerLoopTestCasesGeneratorFnWrapperFactoryFunctionWithNameIn suggerirUnrollFactorOuterLoopsPerBatchKernelIterationsCountOfBat",
+      "similarity": 0.0606,
+      "identical": false
+    },
+    {
+      "id": "pandas__masked_reductions__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__array_algos__masked_reductions_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__array_algos__putmask_monokai.pt",
+      "out_correct": "This file defines the following functions:",
+      "out_swapped": "## Variables\n:param dtype_in1a2b3c4d5e6f7g8h9i0jnamevalueexpectedoutputdtypeoutsizeindexeranknansizeisnanallcloserelerrormeanstdmaxmin comparteixutputonlyifsameasinputdataoptionalboolflagtoindicatewhethertocomparetheresultwithoriginaldataindicates",
+      "similarity": 0.0,
+      "identical": false
+    },
+    {
+      "id": "pandas___version_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas___version_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__dtypes__concat_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d(device)\n2. _test__forwarding \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430ngs3x4()\n3._generate_input(_batch, device_)\ndef __init__(self_, inplace=False): super().super(__inited__, self_).register(\"backward\", lambda x_: torch.__internal__.functionalization_.",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, args0_, kwargs_)\n3. __init__(cls, name, bases, dct)\n4. getitem_(keylist__)\n5. setattr___callable(_thisdictsvaluereftypeobjectsetstateargsmethod",
+      "similarity": 0.3721,
+      "identical": false
+    },
+    {
+      "id": "pandas__grouper_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__groupby__grouper_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__indexes__range_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test_kernellessforwarder realitzant \u0441\u044a\u0432\u043c\u0435\u0441\u0442\u043d\u043e \u0434\u044f\u043b 50% \u043e\u0442 \u0442\u0435\u0441\u0442\u0430, \u0437\u0430 \u0434\u0430 \u0441\u0435 \u043f\u0440\u043e\u0432\u0435\u0440\u0438 \u0447\u0435 \u0440\u0430\u0431\u043e\u0442\u0438 \u043a\u043e\u0440\u0435\u043a\u0442\u043d\u043e \u0431\u0435\u0437 kernel-\u0430 (\u0431\u0435\u0437 loss). \u0422\u043e\u0432\u0430 \u0435 \u0437\u0430\u0440\u0430\u0434\u0438 \u0431\u044a\u0433\u0430 \u0432 torchscript \u043a\u043e\u0439\u0442o \u043d\u0435 \u043c\u043e\u0436\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u043d\u043e \u0438\u043d\u0441\u0442\u0430\u043d",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2darrayviewset(self)\n2. get3dtupleelementtype()\n3. __init__(cls, name_, bases_)\n4. _getitem_(indexer0x5a98f6e7cddbffefdbecadabacdeba\u4e0d\u8d77\u6765__str__)",
+      "similarity": 0.2963,
+      "identical": false
+    },
+    {
+      "id": "pandas___core_c0__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__plotting___core_c0_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__algorithms_c2_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2dconv3x4(self)\n2. _test__kernelizeable \u0441\u044a\u0432\u043c\u0435\u0441\u0442\u043d\u043e\u0435\u0434\u0432\u0430\u0436\u043d\u0438\u044f_-(cls, x0_, y_)\n3. __init__(name, dtype, device, requires_grads, batchsize, inpchans, outchannels, kernelhightyheighttwidthty",
+      "out_swapped": "This file defines the following functions:\n1. test_conv2d__noexcepts(device)\n2. _testcases()\n3. __init__(self, name_, device_)\n4. runnableTestsForDeviceTypeAndVersionInnerLoopTestCasesGeneratorFnWrapperFactoryFunctionWithNameIn suggerirUnrollFactorOuterLoopsPerBatchKernelIterationsCountOfBat",
+      "similarity": 0.4615,
+      "identical": false
+    },
+    {
+      "id": "pandas___calamine__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__excel___calamine_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__io__html_c2_monokai.pt",
+      "out_correct": "This file has:\n- def test_basic(self)\n- def _test__with_customs1402579863_(cls, data):\n- __init__(data_)\n- getters()\n- settable(_name_, value=None)\n- setter(__class__, name, val)\n- propertyerator(*args,",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs(__class__, self, *extra_)\n3. __init__(cls_, name, bases, dct)\n4. addattrlistallmethods()\n5. getattrsfromsuperclassesofmodulelevelfunctionsonlyinthisfileanditssubmodules(_modul",
+      "similarity": 0.1818,
+      "identical": false
+    },
+    {
+      "id": "pandas__from_dataframe_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__interchange__from_dataframe_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__asv_bench__benchmarks__io__excel_monokai.pt",
+      "out_correct": "This comment is for the benefit of machine readers, please do not delete.\n-->\n<AUTODOC>\nmodule::torch._inductor_internals\n</AUTODOC>",
+      "out_swapped": "This file defines the following functions:\n1. test_many2one(self)\n2. create()\n3. update(_selected, _value_)\n4. delete(__obj__)\n5. get__name__(cls)\n6. set___docstring_(klass_, docstrs)\n7. __init__(dataframe0a \u0441\u044a\u0441\u0442\u0430\u0432\u044fctrine \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442 selected value",
+      "similarity": 0.093,
+      "identical": false
+    },
+    {
+      "id": "pandas__range_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__indexes__range_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__arrays__sparse__array_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2darrayviewset(self)\n2. get3dtupleelementtype()\n3. __init__(cls, name_, bases_)\n4. _getitem_(indexer0x5a98f6e7cddbffefdbecadabacdeba\u4e0d\u8d77\u6765__str__)",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__getitem__(cls, key_)\n3._setattr_(name_, value__)\n4.__init__(key__, default=None)\n5. __repr__(a0)\n6. get()\n7. setdefault(__value=_sentinel())\n8. has",
+      "similarity": 0.4103,
+      "identical": false
+    },
+    {
+      "id": "pandas__numpy__c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__arrays__numpy__c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__indexes__period_c1_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_manytomanyfield(self)\n2. create_models()\n3. setUpTestData(cls, apps)\n4. tearDownClass(cls)\n5. getSchemaForTableWithPKsAndFKeysOnlyInOneModelWithoutAutoIncrementOnPrimaryKeyFieldTestsByUsingRawSQLQueryBuilderAgainstPostgreSQLBackend",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5b0c6e7f8g9h(__file__)\n4. __init__(cls, name, bases, dct_)\ndef setUpClass(klass):\n    klass.__call__ = lambda self_,",
+      "similarity": 0.4615,
+      "identical": false
+    },
+    {
+      "id": "pandas__period_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__indexes__period_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__asv_bench__benchmarks__io__csv_c0_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5b0c6e7f8g9h(__file__)\n4. __init__(cls, name, bases, dct_)\ndef setUpClass(klass):\n    klass.__call__ = lambda self_,",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a0b5c6e7f8g9h \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430\u0435\u0442 (https://github.com/django-imports/tests/) # noqa E501\n3. __init__(cls, name, bases, attrs)\n4.",
+      "similarity": 0.5581,
+      "identical": false
+    },
+    {
+      "id": "pandas__asserters_c1__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas___testing__asserters_c1_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__ops__missing_monokai.pt",
+      "out_correct": "This file defines the following classes:\n1. TestDynamicQuantizeLinearWithStaticShapeInputAndOutputTypesInTrainingModeWithoutBiasModuleGraphsForNonContiguousShapes2D_CUDAOnlyTestCasesClassifierModelConfigDictWrapperStructuredTypeKwargsNestedListOfStringsKWArgsInnerDictionaryStringKeyStride3DTupleInt64TupleFloatKeywordArgDim",
+      "out_swapped": "This file defines the following functions:\n1. test_basic2d(self)\n2. _test3x4a()\n3._check5thdim corresponia fonamentalment \u043e\u0442\u0440\u0430\u0437\u044f\u0432\u0430s6e7f8g9h0i__inplace(__class__, self, a_, b_)\n4. __init__(cls, name, bases, dctnkwdsdict",
+      "similarity": 0.4,
+      "identical": false
+    },
+    {
+      "id": "pandas__readers_c2__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__io__parsers__readers_c2_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__scripts__check_for_inconsistent_pandas_namespace_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs__(cls, args_, kwargs_)\n3._getattr_(name)\n4.__init__(value0, value1, name)\n5. __repr__(obj)\n6. getitem()\n7. setstate(__new__)\n8. stateful",
+      "out_swapped": "This file defines 4 modules: data, model_utils.py327680159e-fastest__generation_, utils/data/__init__.pypytorchvision._internal.__version__, torchviz/_convertor_.cpythonmodule_generatewrappertypeinfo",
+      "similarity": 0.1818,
+      "identical": false
+    },
+    {
+      "id": "pandas__algorithms_c2__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__core__algorithms_c2_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__asv_bench__benchmarks__timeseries_monokai.pt",
+      "out_correct": "This file defines the following functions:\n1. test_conv2d__noexcepts(device)\n2. _testcases()\n3. __init__(self, name_, device_)\n4. runnableTestsForDeviceTypeAndVersionInnerLoopTestCasesGeneratorFnWrapperFactoryFunctionWithNameIn suggerirUnrollFactorOuterLoopsPerBatchKernelIterationsCountOfBat",
+      "out_swapped": "This file defines the following functions:\n1. test_basic(self)\n2. _test__noargs__(cls, methodname, argslist_, kwargsspecs_)\n3. __init__(thisclassreferentiallystrictmodeflagsettersandgetterexpensivechecksthesearenotcalledifthemoduleisimportedtwiceinadifferentway",
+      "similarity": 0.5625,
+      "identical": false
+    },
+    {
+      "id": "pandas__groupby__function_listing",
+      "task_type": "function_listing",
+      "feat_correct": "precomputed_features_tiled/pandas__pandas__plotting___matplotlib__groupby_monokai.pt",
+      "feat_swapped": "precomputed_features_tiled/pandas__pandas__core__missing_c0_monokai.pt",
+      "out_correct": "## Functions\ndef __init__(self, data)",
+      "out_swapped": "This file defines the following functions:\n1. get_device(module)\n2. isinplace()\n3. setattr_(self, key_, value_)\n4. __init__(name, device=None, dtype=<class 'torch._C.Dtype'>)\n5. _getitem__(_key__)\n6. tolist(*args, **kwargs",
+      "similarity": 0.0,
+      "identical": false
+    }
+  ]
+}

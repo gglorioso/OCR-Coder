@@ -7,20 +7,17 @@
 
 ## Quick Status
 
-**Current Phase:** 2b complete — full eval done; paper / next-step framing
+**Current Phase:** Dual-track — MICS paper (Q-Former ablation) + Rosie competition (full pretraining)
 **Last Updated:** 2026-02-24
 
-- ✅ **Phase 2a v6 COMPLETE** — G4 PASS, G5 deferred, G6 collapse resolved
-  - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json` (2086 ex)
-- ✅ **Phase 2b training COMPLETE** — Job 225376, ~10h45m, best val_loss=1.3114 at step 800
-  - Checkpoint: `./checkpoints/phase2b/best.pt`; adapter + LoRA (4× V100 dgx, 2 epochs, 1252 steps)
-- ✅ **Phase 2b full eval COMPLETE** — 2018 val examples; G4 ROUGE-L 0.3079 PASS, G5 exact-match 0% FAIL, G6 Distinct-1 0.20 FAIL
-  - ROUGE-L by task: class_listing 0.62, function_listing 0.37, import_listing 0.41; description/explanation ~0.07–0.10
-  - Eval script: `coder_vl/evaluate_phase2b.py` + `evaluate_phase2b.sh`; results: `./eval_results_2b.json`
+- ✅ **Phase 2b eval analysed** — hallucination root-caused: template gaming inflates ROUGE-L; model generates different hallucinations per image (not blind to image)
+- ✅ **Test 1 (image sensitivity) COMPLETE** — Job 225890; mean ROUGE-L between correct/swapped image = 0.335; visual tokens reach LLM but adapter misaligns them
+- ⏳ **Linear probe (Test 3) running** — Job 225896; train+val manifests; will confirm whether features contain source-file info
+- ✅ **data_gen_2b.py updated** — multi-theme support via `--styles`; 8 themes × 8,775 files ≈ 70K images in ~11h
 
-**Current Step: Paper / next-step framing**
-1. ⏳ **Draft paper** — Phase 2a + 2b results, Sniper viability (vision for localization, not symbol-perfect decoding)
-2. ⏳ **Optional: localization-style eval** — Top-k function/class probe to show vision helps “where is the bug” even without exact-match
+**Current Step: Two parallel tracks**
+1. ⏳ **MICS paper (15 days)** — text-only baseline + retrieval baseline + Q-Former ablation, then write paper
+2. ⏳ **Rosie competition** — run `data_gen_2b.py --styles monokai dracula one-dark github-dark nord default friendly vs --output-dir data_v3`, then Stage 1 pretraining
 
 ---
 

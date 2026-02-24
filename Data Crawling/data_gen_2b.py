@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-data_gen_2b.py — Phase 2b data pipeline
+data_gen_2b.py — Phase 2b data pipeline (multi-theme capable)
 
 Processes ALL valid Python files from Scraped Repos:
 1. Chunks files >500 lines into 500-line segments (one image per chunk)
 2. Skips chunks whose image already exists (idempotent reruns)
-3. Renders new monokai PNG images
+3. Renders PNG images in one or more Pygments colour themes
 4. Generates up to 6 AST label types per chunk
 5. Repo-level 90/5/5 split (prevents data leakage across splits)
 6. Writes JSONL manifests to --output-dir/manifests/
@@ -13,16 +13,23 @@ Processes ALL valid Python files from Scraped Repos:
 Key differences from Phase 2a (simple_data_gen.py):
 - No sampling cap — uses all 6,954+ valid files
 - Chunked rendering (500 lines/image instead of whole file)
-- Unique naming: {repo}__{relpath}[_c{N}]_monokai (no collision risk)
+- Unique naming: {repo}__{relpath}[_c{N}]_{style} (no collision risk)
 - 6th task: function_explanation (using per-function docstrings)
 - Repo-level split instead of random split
 - Idempotent: skips images already on disk
+- Multi-theme: --styles flag renders each chunk in multiple colour schemes
 
-Usage:
+Usage (single theme — backward compatible):
     python data_gen_2b.py \\
         --repos-dir ~/CoderOCR/OCR-Coder/Scraped\\ Repos \\
         --output-dir ~/CoderOCR/OCR-Coder/data_v2b \\
         --features-dir ~/CoderOCR/OCR-Coder/precomputed_features_tiled
+
+Usage (multi-theme for Stage 1 pretraining):
+    python data_gen_2b.py \\
+        --repos-dir ~/CoderOCR/OCR-Coder/Scraped\\ Repos \\
+        --output-dir ~/CoderOCR/OCR-Coder/data_v3 \\
+        --styles monokai dracula github-dark solarized-dark vs friendly
 """
 
 import argparse
@@ -40,7 +47,7 @@ from code_to_image import convert_string_to_image
 # ── Constants ─────────────────────────────────────────────────────────────────
 CHUNK_SIZE = 500       # lines per image
 MIN_CHUNK_LINES = 50   # skip tiny tail chunks
-STYLE = "monokai"
+DEFAULT_STYLES = ["monokai"]   # override with --styles
 FONT_SIZE = 13
 
 
@@ -131,13 +138,13 @@ def chunk_source(source: str, chunk_size: int = CHUNK_SIZE) -> List[Tuple[int, i
     return chunks
 
 
-def make_stem(repo: str, rel_path: str, chunk_idx: int, n_chunks: int) -> str:
+def make_stem(repo: str, rel_path: str, chunk_idx: int, n_chunks: int, style: str) -> str:
     """Unique, filesystem-safe stem for image/feature files."""
     safe = rel_path.replace("/", "__").replace("\\", "__").replace(".py", "")
     base = f"{repo}__{safe}"
     if n_chunks == 1:
-        return f"{base}_{STYLE}"
-    return f"{base}_c{chunk_idx}_{STYLE}"
+        return f"{base}_{style}"
+    return f"{base}_c{chunk_idx}_{style}"
 
 
 # ── AST Label Generation ───────────────────────────────────────────────────────
@@ -296,6 +303,11 @@ def main():
                         help="Dir to check for existing .pt files; images with .pt are skipped")
     parser.add_argument("--chunk-size", type=int, default=CHUNK_SIZE,
                         help="Lines per image chunk (default 500)")
+    parser.add_argument("--styles", nargs="+", default=DEFAULT_STYLES,
+                        metavar="STYLE",
+                        help="Pygments style names to render (default: monokai). "
+                             "Each chunk is rendered once per style. "
+                             "Example: --styles monokai dracula github-dark solarized-dark vs friendly")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -328,6 +340,9 @@ def main():
     print("Step 3: Chunking, rendering, and labeling")
     print("=" * 60)
 
+    styles = args.styles
+    print(f"  Rendering {len(styles)} style(s): {styles}\n")
+
     split_examples: Dict[str, List[Dict]] = {"train": [], "val": [], "test": []}
     n_rendered = n_skipped = n_failed = n_examples = 0
 
@@ -343,68 +358,76 @@ def main():
         n_chunks = len(chunks)
         split = split_map[f["repo"]]
 
+        # Pre-compute AST labels once per chunk (same for all styles)
+        chunk_labels = []
         for chunk_idx, (start_line, end_line, chunk_code) in enumerate(chunks):
             if (end_line - start_line + 1) < MIN_CHUNK_LINES:
-                continue  # skip tiny tail chunks
+                chunk_labels.append(None)
+                continue
+            chunk_labels.append(extract_chunk_labels(source, start_line, end_line))
 
-            stem = make_stem(f["repo"], f["rel_path"], chunk_idx, n_chunks)
-            img_path = images_dir / f"{stem}.png"
-            pt_path = features_dir / f"{stem}.pt"
-
-            # Skip if image already rendered (idempotent reruns)
-            if img_path.exists():
-                n_skipped += 1
-                img_abs = str(img_path.resolve())
-            else:
-                try:
-                    img_abs = convert_string_to_image(
-                        code_str=chunk_code,
-                        out_path=str(img_path),
-                        style=STYLE,
-                        font_size=FONT_SIZE,
-                    )
-                    n_rendered += 1
-                except Exception as e:
-                    print(
-                        f"    WARN render failed {f['repo']}/{f['rel_path']} "
-                        f"c{chunk_idx}: {e}"
-                    )
-                    n_failed += 1
+        for style in styles:
+            for chunk_idx, (start_line, end_line, chunk_code) in enumerate(chunks):
+                if (end_line - start_line + 1) < MIN_CHUNK_LINES:
                     continue
 
-            # Generate AST labels for this chunk
-            labels = extract_chunk_labels(source, start_line, end_line)
-            if not labels:
-                continue
+                labels = chunk_labels[chunk_idx]
+                if not labels:
+                    continue
 
-            rel_stem = Path(f["rel_path"]).stem
-            for label in labels:
-                ex_id = f"{f['repo']}__{rel_stem}"
-                if n_chunks > 1:
-                    ex_id += f"_c{chunk_idx}"
-                ex_id += f"__{label['task']}"
+                stem = make_stem(f["repo"], f["rel_path"], chunk_idx, n_chunks, style)
+                img_path = images_dir / f"{stem}.png"
 
-                split_examples[split].append({
-                    "id": ex_id,
-                    "image": img_abs,
-                    "repo": f["repo"],
-                    "source_file": f["rel_path"],
-                    "chunk_idx": chunk_idx,
-                    "start_line": start_line,
-                    "end_line": end_line,
-                    "task_type": label["task"],
-                    "conversations": [
-                        {
-                            "role": "user",
-                            "content": f"<img_start><image><img_end>\n{label['question']}",
-                        },
-                        {
-                            "role": "assistant",
-                            "content": label["answer"],
-                        },
-                    ],
-                })
-                n_examples += 1
+                # Skip if image already rendered (idempotent reruns)
+                if img_path.exists():
+                    n_skipped += 1
+                    img_abs = str(img_path.resolve())
+                else:
+                    try:
+                        img_abs = convert_string_to_image(
+                            code_str=chunk_code,
+                            out_path=str(img_path),
+                            style=style,
+                            font_size=FONT_SIZE,
+                        )
+                        n_rendered += 1
+                    except Exception as e:
+                        print(
+                            f"    WARN render failed {f['repo']}/{f['rel_path']} "
+                            f"c{chunk_idx} style={style}: {e}"
+                        )
+                        n_failed += 1
+                        continue
+
+                rel_stem = Path(f["rel_path"]).stem
+                for label in labels:
+                    ex_id = f"{f['repo']}__{rel_stem}"
+                    if n_chunks > 1:
+                        ex_id += f"_c{chunk_idx}"
+                    ex_id += f"_{style}__{label['task']}"
+
+                    split_examples[split].append({
+                        "id": ex_id,
+                        "image": img_abs,
+                        "repo": f["repo"],
+                        "source_file": f["rel_path"],
+                        "style": style,
+                        "chunk_idx": chunk_idx,
+                        "start_line": start_line,
+                        "end_line": end_line,
+                        "task_type": label["task"],
+                        "conversations": [
+                            {
+                                "role": "user",
+                                "content": f"<img_start><image><img_end>\n{label['question']}",
+                            },
+                            {
+                                "role": "assistant",
+                                "content": label["answer"],
+                            },
+                        ],
+                    })
+                    n_examples += 1
 
     # ── Step 4: Write manifests ────────────────────────────────────────────────
     print("\n" + "=" * 60)
@@ -422,6 +445,7 @@ def main():
     print("DONE")
     print("=" * 60)
     print(f"  Files processed : {len(files)}")
+    print(f"  Styles rendered : {styles}")
     print(f"  Images rendered : {n_rendered}")
     print(f"  Images skipped  : {n_skipped}  (already on disk)")
     print(f"  Render failures : {n_failed}")

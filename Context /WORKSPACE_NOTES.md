@@ -274,7 +274,14 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-24):** Phase 2b training and full evaluation
+1. **✅ COMPLETED (2026-02-24):** Diagnostic experiments + dual-track plan
+   - **Test 1 (image sensitivity, job 225890):** mean ROUGE-L correct vs swapped image = 0.335 → model IS sensitive to image (visual tokens reach LLM) but generates different hallucinations, not correct code. Root cause: MLP adapter misaligns features into LLM space; LLM has zero visual pre-training experience.
+   - **Linear probe (job 225896):** in progress on teaching node; uses train+val manifests (~42K examples, ~8.7K unique images); will confirm whether compression kills info or adapter is the bottleneck.
+   - **Paper reframed** as "Investigating Visual Feature Alignment in Code-Aware VLMs"; submitted to MICS (due ~15 days). Plan: text-only baseline + retrieval baseline + Q-Former ablation.
+   - **Rosie competition track:** `data_gen_2b.py` updated with `--styles` multi-theme flag; 8 styles × 8,775 files ≈ 70,200 images (~11h on 1 CPU teaching node); output to `data_v3/`. Follow with Stage 1 visual alignment pretraining (LLM frozen, adapter only, large dataset).
+   - **Key architectural insight:** MLP adapter (LLaVA-1.5 style) insufficient without LLM visual pre-training. Q-Former (BLIP-2 style) is next step for MICS; full Stage 1 pretraining on 70K+ images for Rosie.
+
+2. **✅ COMPLETED (2026-02-24):** Phase 2b training and full evaluation
    - Phase 2b training (job 225376): 2 epochs, best val_loss=1.3114 at step 800; checkpoint `./checkpoints/phase2b/best.pt`
    - Phase 2b eval script added: `coder_vl/evaluate_phase2b.py` + `evaluate_phase2b.sh`; full run on 2018 val examples
    - Gates: G4 ROUGE-L 0.3079 PASS; G5 exact-match 0% FAIL; G6 Distinct-1 0.20 FAIL. Strong ROUGE on class/function/import listing; weak on description/explanation. Discussed Sniper viability (localization framing, not symbol-perfect decoding).
