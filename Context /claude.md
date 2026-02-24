@@ -7,17 +7,18 @@
 
 ## Quick Status
 
-**Current Phase:** Dual-track — MICS paper (Q-Former ablation) + Rosie competition (full pretraining)
+**Current Phase:** Dual-track — MICS paper + Rosie competition (data expansion + retraining)
 **Last Updated:** 2026-02-24
 
-- ✅ **Phase 2b eval analysed** — hallucination root-caused: template gaming inflates ROUGE-L; model generates different hallucinations per image (not blind to image)
-- ✅ **Test 1 (image sensitivity) COMPLETE** — Job 225890; mean ROUGE-L between correct/swapped image = 0.335; visual tokens reach LLM but adapter misaligns them
-- ⏳ **Linear probe (Test 3) running** — Job 225896; train+val manifests; will confirm whether features contain source-file info
-- ✅ **data_gen_2b.py updated** — multi-theme support via `--styles`; 8 themes × 8,775 files ≈ 70K images in ~11h
+- ✅ **Linear probe COMPLETE** — Job 225927; Top-1=4.6% on 614-class source-file classification, **28× above random**; SAGA unconverged so true ceiling higher; **encoder works, bottleneck is generation**
+- ✅ **Semantic eval COMPLETE** — Job 225948; Retrieval Recall@5=2.6% overall (3× random); function_explanation Recall@5=9.8% (11× random); description near-random (decoder hallucination)
+- ✅ **data_gen_2b.py parallelized** — `--n-workers` added; `data_gen_v3.sh` ready (16 workers, 8 styles ~2h); BUT 13 repos insufficient (transformers+pytorch=68% of data)
+- ✅ **eval_semantic.py added** — BERTScore-proxy + Retrieval Recall@k eval; runs on existing eval_results_2b.json CPU-only
 
-**Current Step: Two parallel tracks**
-1. ⏳ **MICS paper (15 days)** — text-only baseline + retrieval baseline + Q-Former ablation, then write paper
-2. ⏳ **Rosie competition** — run `data_gen_2b.py --styles monokai dracula one-dark github-dark nord default friendly vs --output-dir data_v3`, then Stage 1 pretraining
+**Current Step: Fix training task design before more data**
+1. **Fix probe crash + resubmit** — `top_k_accuracy_score` label mismatch bug in `test_linear_probe.py:130`; need Top-5 and Probe B results
+2. **Scrape 50 repos then run data_gen_v3** — 13 repos → 50 repos before style expansion; ~260GB features feasible on Rosie
+3. **Reweight tasks** — drop `function_listing`/`function_signatures`; triple `description`/`function_explanation`; add coarse domain classification task
 
 ---
 

@@ -274,7 +274,14 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-24):** Diagnostic experiments + dual-track plan
+1. **✅ COMPLETED (2026-02-24):** Linear probe + semantic eval — architecture validated, tasks need redesign
+   - **Linear probe (job 225927):** Top-1=4.6% on 614-class source-file ID, 28× above random. Frozen SigLIP features ARE informative. Crashed on Top-5 (label count bug in `test_linear_probe.py:130` — fix: pass `labels=np.arange(n_classes)` to `top_k_accuracy_score`). Probe B (has-class binary) never ran.
+   - **Semantic eval (job 225948):** Retrieval Recall@5=2.6% overall, function_explanation=9.8%, description=0.7% (near random). DistilBERT cosine 0.84 is inflated by anisotropy — ignore. Retrieval numbers are the honest signal.
+   - **Key conclusion:** Encoder works. Decoder hallucinates because training tasks (function_listing, function_signatures) require character-level visual accuracy the model can't achieve. Need to reweight toward description/explanation tasks + add contrastive/domain-classification objective.
+   - **Data scale finding:** 13 repos (transformers+pytorch=68%) is insufficient diversity. Style augmentation (8 styles) gives visual robustness but NOT semantic diversity. Need 50 repos before running data_gen_v3. `/home` at 98% capacity — ~2.8T free shared; 50 repos × 3 styles → ~260GB features, feasible.
+   - **New files:** `coder_vl/eval_semantic.py`, `coder_vl/eval_semantic.sh`, `eval_semantic_results.json`, `Data Crawling/data_gen_v3.sh`; `data_gen_2b.py` now has `--n-workers` (multiprocessing Pool)
+
+2. **✅ COMPLETED (2026-02-24):** Diagnostic experiments + dual-track plan
    - **Test 1 (image sensitivity, job 225890):** mean ROUGE-L correct vs swapped image = 0.335 → model IS sensitive to image (visual tokens reach LLM) but generates different hallucinations, not correct code. Root cause: MLP adapter misaligns features into LLM space; LLM has zero visual pre-training experience.
    - **Linear probe (job 225896):** in progress on teaching node; uses train+val manifests (~42K examples, ~8.7K unique images); will confirm whether compression kills info or adapter is the bottleneck.
    - **Paper reframed** as "Investigating Visual Feature Alignment in Code-Aware VLMs"; submitted to MICS (due ~15 days). Plan: text-only baseline + retrieval baseline + Q-Former ablation.
