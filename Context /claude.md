@@ -10,15 +10,15 @@
 **Current Phase:** Dual-track — MICS paper + Rosie competition (data expansion + retraining)
 **Last Updated:** 2026-02-24
 
-- ✅ **Linear probe COMPLETE** — Job 225927; Top-1=4.6% on 614-class source-file classification, **28× above random**; SAGA unconverged so true ceiling higher; **encoder works, bottleneck is generation**
+- ✅ **Linear probe COMPLETE (clean)** — Job 225980; Top-1=4.6%, Top-5=9.3%, **28.2× above random** on 614-class source-file classification; **encoder works, bottleneck is generation**
 - ✅ **Semantic eval COMPLETE** — Job 225948; Retrieval Recall@5=2.6% overall (3× random); function_explanation Recall@5=9.8% (11× random); description near-random (decoder hallucination)
 - ✅ **data_gen_2b.py parallelized** — `--n-workers` added; `data_gen_v3.sh` ready (16 workers, 8 styles ~2h); BUT 13 repos insufficient (transformers+pytorch=68% of data)
-- ✅ **eval_semantic.py added** — BERTScore-proxy + Retrieval Recall@k eval; runs on existing eval_results_2b.json CPU-only
+- ✅ **Root cause identified** — Training tasks (function_listing/signatures) require impossible character-level visual accuracy → hallucination; generation loss ≠ retrieval training
 
-**Current Step: Fix training task design before more data**
-1. **Fix probe crash + resubmit** — `top_k_accuracy_score` label mismatch bug in `test_linear_probe.py:130`; need Top-5 and Probe B results
-2. **Scrape 50 repos then run data_gen_v3** — 13 repos → 50 repos before style expansion; ~260GB features feasible on Rosie
-3. **Reweight tasks** — drop `function_listing`/`function_signatures`; triple `description`/`function_explanation`; add coarse domain classification task
+**Current Step: Fix training objective with contrastive loss**
+1. **Add InfoNCE contrastive loss** — `L_total = L_generation + 0.1 * L_InfoNCE(mean_pool(adapter_out), text_emb)`; directly trains visual-text alignment for retrieval; test on existing 13-repo data
+2. **Redesign tasks** — drop `function_listing`/`function_signatures`; triple `description`/`function_explanation`; add `domain_classification` + `has_import` binary tasks
+3. **Scrape 50 repos** — AFTER fixing training objective (more data with wrong loss = same result at larger scale)
 
 ---
 

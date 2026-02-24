@@ -274,7 +274,15 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-24):** Linear probe + semantic eval — architecture validated, tasks need redesign
+1. **✅ COMPLETED (2026-02-24):** Training objective + evaluation strategy decided — contrastive loss required
+   - **Probe B finding:** All 5,939 images labeled positive (labeling bug in fallback logic) → binary probe useless; Probe A results sufficient
+   - **Clean probe results (job 225980):** Top-1=4.6%, Top-5=9.3%, 28.2× above random — CONFIRMED encoder works
+   - **Root cause:** Training tasks (function_listing, function_signatures) require character-level visual accuracy model cannot achieve → hallucination. Description/explanation tasks are achievable but under-weighted.
+   - **Critical insight:** Generation loss does NOT train retrieval. Need InfoNCE contrastive loss: `L_total = L_generation + 0.1 * L_InfoNCE(mean_pool(adapter_out), text_emb)` to directly optimize embedding space for Sniper Method localization.
+   - **Priority order:** (1) Fix training objective with contrastive loss — test on existing 13-repo data; (2) Redesign tasks (drop listing tasks, triple description/explanation); (3) Scrape 50 repos AFTER objective is correct. More data with wrong loss = same bad retrieval at larger scale.
+   - **Evaluation metric:** Drop ROUGE-L. Use Retrieval Recall@k as primary metric going forward.
+
+2. **✅ COMPLETED (2026-02-24):** Linear probe + semantic eval — architecture validated, tasks need redesign
    - **Linear probe (job 225927):** Top-1=4.6% on 614-class source-file ID, 28× above random. Frozen SigLIP features ARE informative. Crashed on Top-5 (label count bug in `test_linear_probe.py:130` — fix: pass `labels=np.arange(n_classes)` to `top_k_accuracy_score`). Probe B (has-class binary) never ran.
    - **Semantic eval (job 225948):** Retrieval Recall@5=2.6% overall, function_explanation=9.8%, description=0.7% (near random). DistilBERT cosine 0.84 is inflated by anisotropy — ignore. Retrieval numbers are the honest signal.
    - **Key conclusion:** Encoder works. Decoder hallucinates because training tasks (function_listing, function_signatures) require character-level visual accuracy the model can't achieve. Need to reweight toward description/explanation tasks + add contrastive/domain-classification objective.
