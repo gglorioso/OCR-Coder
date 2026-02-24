@@ -7,23 +7,20 @@
 
 ## Quick Status
 
-**Current Phase:** 2b — ready to write training scripts
-**Last Updated:** 2026-02-23
+**Current Phase:** 2b complete — full eval done; paper / next-step framing
+**Last Updated:** 2026-02-24
 
 - ✅ **Phase 2a v6 COMPLETE** — G4 PASS, G5 deferred, G6 collapse resolved
   - Checkpoint: `./checkpoints/phase2a_v6/best.pt`; results: `./eval_results_v6.json` (2086 ex)
-- ✅ **Phase 2b data pipeline COMPLETE** — 9,469/9,470 images precomputed ([720,1280] fp16), 45,095 examples
-  - train: 40,083 (13 repos) | val: 2,018 (pandas) | test: 2,994 (scikit-learn)
-  - Features in `precomputed_features_tiled/` (11,634 monokai .pt files total)
-- ✅ **Phase 2b training plan finalized** — 2× V100 (dgx), 4-bit QLoRA, ~13h, seq=260
-  - LoRA targets VERIFIED from modeling_deepseek.py: `q_proj`, `kv_a_proj_with_mqa`, `kv_b_proj`, `o_proj`
-  - (Plan doc was WRONG: q_a_proj/q_b_proj don't exist in Lite — q_lora_rank=None → uses q_proj directly)
-  - Memory: ~11.9 GB / 32 GB V100; `peft` not installed — must pip install before submit
+- ✅ **Phase 2b training COMPLETE** — Job 225376, ~10h45m, best val_loss=1.3114 at step 800
+  - Checkpoint: `./checkpoints/phase2b/best.pt`; adapter + LoRA (4× V100 dgx, 2 epochs, 1252 steps)
+- ✅ **Phase 2b full eval COMPLETE** — 2018 val examples; G4 ROUGE-L 0.3079 PASS, G5 exact-match 0% FAIL, G6 Distinct-1 0.20 FAIL
+  - ROUGE-L by task: class_listing 0.62, function_listing 0.37, import_listing 0.41; description/explanation ~0.07–0.10
+  - Eval script: `coder_vl/evaluate_phase2b.py` + `evaluate_phase2b.sh`; results: `./eval_results_2b.json`
 
-**Current Step: Write Phase 2b training scripts**
-1. ⏳ **Write `coder_vl/train_phase2b.py`** — 4-bit QLoRA, 2-GPU DDP, auto-resume, 30-min checkpoints
-2. ⏳ **Write `coder_vl/train_phase2b.sh`** — dgx, 2× V100, 24h, data_v2b manifests
-3. ⏳ `pip install peft` then `sbatch coder_vl/train_phase2b.sh`
+**Current Step: Paper / next-step framing**
+1. ⏳ **Draft paper** — Phase 2a + 2b results, Sniper viability (vision for localization, not symbol-perfect decoding)
+2. ⏳ **Optional: localization-style eval** — Top-k function/class probe to show vision helps “where is the bug” even without exact-match
 
 ---
 

@@ -274,7 +274,12 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-10):** Phase 2 initial implementation
+1. **✅ COMPLETED (2026-02-24):** Phase 2b training and full evaluation
+   - Phase 2b training (job 225376): 2 epochs, best val_loss=1.3114 at step 800; checkpoint `./checkpoints/phase2b/best.pt`
+   - Phase 2b eval script added: `coder_vl/evaluate_phase2b.py` + `evaluate_phase2b.sh`; full run on 2018 val examples
+   - Gates: G4 ROUGE-L 0.3079 PASS; G5 exact-match 0% FAIL; G6 Distinct-1 0.20 FAIL. Strong ROUGE on class/function/import listing; weak on description/explanation. Discussed Sniper viability (localization framing, not symbol-perfect decoding).
+
+2. **✅ COMPLETED (2026-02-10):** Phase 2 initial implementation
    - ✅ Created `coder_vl/projector.py` — 13.6M parameter MLP (1280D→4096D→2048D), tested and verified
    - ✅ Created `coder_vl/model.py` — LLaVA-style token integration (<image> → visual tokens)
    - ✅ Created `coder_vl/extract_encoder.py` — Vision encoder extraction from DeepSeek-OCR-2
