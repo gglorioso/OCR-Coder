@@ -116,9 +116,9 @@ def probe_source_file(examples, features_dir, min_samples=5, seed=42):
     print()
 
     # Logistic regression
-    print("  Training LogReg (max_iter=500) ...")
-    lr = LogisticRegression(max_iter=1000, C=1.0, solver="saga", n_jobs=-1,
-                            random_state=seed)
+    print("  Training LogReg (max_iter=2000, lbfgs) ...")
+    lr = LogisticRegression(max_iter=2000, C=1.0, solver="lbfgs", n_jobs=-1,
+                            random_state=seed, multi_class="multinomial")
     lr.fit(X_train, y_train)
 
     pred = lr.predict(X_test)
@@ -127,8 +127,14 @@ def probe_source_file(examples, features_dir, min_samples=5, seed=42):
 
     if n_classes >= 5:
         proba = lr.predict_proba(X_test)
-        acc_top5 = top_k_accuracy_score(y_test, proba, k=min(5, n_classes),
-                                        labels=np.arange(n_classes))
+        # Filter test set to classes seen during training (avoids label count mismatch)
+        seen_mask = np.isin(y_test, lr.classes_)
+        n_unseen = (~seen_mask).sum()
+        if n_unseen > 0:
+            print(f"  (Dropping {n_unseen} test samples with unseen classes for Top-k)")
+        acc_top5 = top_k_accuracy_score(y_test[seen_mask], proba[seen_mask],
+                                        k=min(5, len(lr.classes_)),
+                                        labels=lr.classes_)
         print(f"  Top-5 accuracy      : {acc_top5:.4f} ({acc_top5*100:.1f}%)")
 
     # Baseline (random)
@@ -328,8 +334,10 @@ def probe_mlp_source_file(examples, features_dir, min_samples=5, seed=42):
 
     if n_classes >= 5:
         proba = mlp.predict_proba(X_test)
-        acc_top5 = top_k_accuracy_score(y_test, proba, k=min(5, n_classes),
-                                        labels=np.arange(n_classes))
+        seen_mask = np.isin(y_test, mlp.classes_)
+        acc_top5 = top_k_accuracy_score(y_test[seen_mask], proba[seen_mask],
+                                        k=min(5, len(mlp.classes_)),
+                                        labels=mlp.classes_)
         print(f"  Top-5 accuracy : {acc_top5:.4f} ({acc_top5*100:.1f}%)")
 
     baseline = 1.0 / n_classes

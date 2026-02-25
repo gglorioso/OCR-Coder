@@ -1,0 +1,43 @@
+{
+  "model": "distilbert-base-uncased",
+  "n_examples": 2018,
+  "semantic_similarity": {
+    "class_listing": {
+      "mean_cosine": 0.7998,
+      "median_cosine": 0.8506,
+      "n": 222
+    },
+    "description": {
+      "mean_cosine": 0.8411,
+      "median_cosine": 0.8603,
+      "n": 325
+    },
+    "function_explanation": {
+      "mean_cosine": 0.8651,
+      "median_cosine": 0.8738,
+      "n": 317
+    },
+    "function_listing": {
+      "mean_cosine": 0.821,
+      "median_cosine": 0.8468,
+      "n": 409
+    },
+    "function_signatures": {
+      "mean_cosine": 0.8452,
+      "median_cosine": 0.8677,
+      "n": 409
+    },
+    "import_listing": {
+      "mean_cosine": 0.8664,
+      "median_cosine": 0.8745,
+      "n": 336
+    },
+    "_overall": 0.8413
+  },
+  "retrieval": {
+    "recall@1": 0.0103,
+    "recall@3": 0.0224,
+    "recall@5": 0.0258,
+    "recall@10": 0.0499
+  }
+}

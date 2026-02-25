@@ -3,7 +3,7 @@
 #SBATCH --partition=teaching
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=01:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=probe.out
 #SBATCH --error=probe.err
 #SBATCH --mail-user=gloriosog@msoe.edu
