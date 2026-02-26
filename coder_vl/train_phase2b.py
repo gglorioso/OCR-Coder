@@ -1,24 +1,32 @@
 """
-Phase 2b Training — QLoRA Fine-tuning of DeepSeek-Coder-V2-Lite
+Phase 2b/3 Training — QLoRA Fine-tuning of DeepSeek-Coder-V2-Lite
+with SigLIP Contrastive Loss
 
 Trains both the projection adapter AND the DeepSeek-Coder-V2-Lite LLM
 (via 4-bit QLoRA) using pre-computed tiled vision features.
+
+Loss: L_total = L_generation + contrast_weight * L_InfoNCE(visual_emb, text_emb)
+  - L_generation: cross-entropy next-token loss on all task types
+  - L_InfoNCE: SigLIP contrastive loss on description + function_explanation tasks only
+  - text_emb: mean-pooled last hidden state of coder on answer text (no grad)
+  - visual_emb: mean-pooled adapter output (fp32, L2-normalized)
 
 Memory budget per V100 (32 GB):
   4-bit coder:  ~8.96 GB | LoRA delta weights (r=16): ~28 MB
   Adapter:        ~54 MB | Optimizer (AdamW, 20.7M trainable): ~166 MB
   Activations:   ~115 MB | CUDA overhead: ~2.5 GB
-  Total: ~11.9 GB / 32 GB  → ample headroom on V100
+  Total: ~11.9 GB / 32 GB  -> ample headroom on V100
 
 LoRA target modules (verified from modeling_deepseek.py):
   q_proj, kv_a_proj_with_mqa, kv_b_proj, o_proj
-  (q_lora_rank=None in Lite → single q_proj, no q_a_proj/q_b_proj)
+  (q_lora_rank=None in Lite -> single q_proj, no q_a_proj/q_b_proj)
 
 Usage (torchrun, 2 GPUs):
     torchrun --nproc_per_node=2 coder_vl/train_phase2b.py \\
         --features_dir   ./precomputed_features_tiled \\
         --train_manifest data_v2b/manifests/train.jsonl \\
-        --val_manifest   data_v2b/manifests/val.jsonl
+        --val_manifest   data_v2b/manifests/val.jsonl \\
+        --contrast_weight 0.1
 """
 
 import os
@@ -30,6 +38,7 @@ from pathlib import Path
 
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import Dataset, DataLoader, DistributedSampler
 from torch.optim import AdamW
@@ -46,7 +55,36 @@ from projector import ProjectionAdapter
 
 
 # ---------------------------------------------------------------------------
-# Dataset  (unchanged from Phase 2a)
+# Contrastive loss (SigLIP + learnable bias — proven in contrastive_v4)
+# ---------------------------------------------------------------------------
+
+def siglip_contrastive_loss(visual_emb, text_emb, log_temp, bias):
+    """
+    SigLIP contrastive loss with learnable temperature and bias.
+    Avoids representation collapse at small batch sizes (proven in contrastive_v4).
+
+    Args:
+        visual_emb: [N, D] float32, L2-normalized
+        text_emb:   [N, D] float32, L2-normalized, detached (no grad)
+        log_temp:   scalar Parameter, init log(0.07) ~= -2.659
+        bias:       scalar Parameter, init -10.0
+
+    Returns scalar loss. Returns 0.0 if N < 2.
+    """
+    N = visual_emb.size(0)
+    if N < 2:
+        return torch.tensor(0.0, device=visual_emb.device, requires_grad=True)
+    logits = torch.matmul(visual_emb, text_emb.T) * log_temp.exp() + bias
+    labels = torch.eye(N, device=logits.device)
+    return F.binary_cross_entropy_with_logits(logits, labels)
+
+
+# Tasks that receive InfoNCE loss (semantically dense, good retrieval anchors)
+CONTRASTIVE_TASKS = {"description", "function_explanation"}
+
+
+# ---------------------------------------------------------------------------
+# Dataset
 # ---------------------------------------------------------------------------
 
 class PrecomputedDataset(Dataset):
@@ -123,7 +161,13 @@ class PrecomputedDataset(Dataset):
         if pad_id is not None:
             labels[labels == pad_id] = -100
 
-        return {"input_ids": input_ids, "labels": labels, "features": features}
+        return {
+            "input_ids":   input_ids,
+            "labels":      labels,
+            "features":    features,
+            "task_type":   ex.get("task_type", ""),   # str — for InfoNCE gating
+            "answer_text": conv[1]["content"],         # str — raw answer for text_emb
+        }
 
 
 def _find_subseq(lst, sub):
@@ -132,6 +176,20 @@ def _find_subseq(lst, sub):
         if lst[i : i + n] == sub:
             return i
     return -1
+
+
+# ---------------------------------------------------------------------------
+# Collate function (handles variable-length string fields)
+# ---------------------------------------------------------------------------
+
+def collate_fn(batch):
+    return {
+        "input_ids":   torch.stack([b["input_ids"]  for b in batch]),
+        "labels":      torch.stack([b["labels"]     for b in batch]),
+        "features":    torch.stack([b["features"]   for b in batch]),
+        "task_type":   [b["task_type"]   for b in batch],
+        "answer_text": [b["answer_text"] for b in batch],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -240,12 +298,12 @@ def _cleanup_old_checkpoints(ckpt_dir, keep=3):
 
 
 def save_checkpoint(adapter, coder, optimizer, scheduler,
-                    step, epoch, best_val, ckpt_dir, name, is_distributed):
-    """Save adapter weights, LoRA delta weights, and full optimizer state."""
+                    step, epoch, best_val, ckpt_dir, name, is_distributed,
+                    log_temp, bias):
+    """Save adapter weights, LoRA delta weights, contrastive params, and optimizer state."""
     path = os.path.join(ckpt_dir, f"{name}.pt")
     inner_adapter = adapter.module if is_distributed else adapter
     inner_coder   = coder.module   if is_distributed else coder
-    # Save only LoRA delta weights (not the full 4-bit model)
     lora_state = {k: v for k, v in inner_coder.state_dict().items() if "lora_" in k}
     torch.save({
         "adapter_state_dict":   inner_adapter.state_dict(),
@@ -255,6 +313,8 @@ def save_checkpoint(adapter, coder, optimizer, scheduler,
         "global_step":          step,
         "epoch":                epoch,
         "best_val_loss":        best_val,
+        "log_temp":             log_temp.detach().cpu(),
+        "bias":                 bias.detach().cpu(),
     }, path)
     print(f"  Saved checkpoint: {path}")
 
@@ -264,30 +324,56 @@ def save_checkpoint(adapter, coder, optimizer, scheduler,
 # ---------------------------------------------------------------------------
 
 @torch.no_grad()
-def evaluate(adapter, coder, loader, image_token_id, embed_fn, device):
+def evaluate(adapter, coder, loader, image_token_id, embed_fn, device,
+             log_temp, bias, tokenizer, contrast_weight):
     """
     Evaluate on loader.  adapter and coder must be unwrapped (not DDP wrappers).
     Sets eval mode, runs eval, restores train mode before returning.
+    Returns (val_loss, val_pos_cos) where val_pos_cos is mean positive cosine
+    similarity over contrastive-task batches.
     """
     adapter.eval()
     coder.eval()
-    total_loss, n = 0.0, 0
+    total_loss, total_pos_cos, n, n_contrast = 0.0, 0.0, 0, 0
+
     for batch in loader:
-        ids  = batch["input_ids"].to(device)
-        lbl  = batch["labels"].to(device)
-        feat = batch["features"].to(device)
+        ids     = batch["input_ids"].to(device)
+        lbl     = batch["labels"].to(device)
+        feat    = batch["features"].to(device)
+        tasks   = batch["task_type"]
+        answers = batch["answer_text"]
 
-        projected  = adapter(feat.float()).half()
+        projected    = adapter(feat.float()).half()
         embeds, mask = replace_image_tokens(ids, projected, image_token_id, embed_fn)
-        adj_labels = expand_labels(lbl, ids, image_token_id, feat.size(1))
+        adj_labels   = expand_labels(lbl, ids, image_token_id, feat.size(1))
+        L_gen = coder(inputs_embeds=embeds, attention_mask=mask, labels=adj_labels).loss
 
-        loss = coder(inputs_embeds=embeds, attention_mask=mask, labels=adj_labels).loss
-        total_loss += loss.item()
+        c_mask = torch.tensor([t in CONTRASTIVE_TASKS for t in tasks], device=device)
+        if c_mask.sum() >= 2:
+            vis_emb = F.normalize(projected[c_mask].float().mean(dim=1), dim=-1)
+            contrast_answers = [answers[i] for i, c in enumerate(c_mask.tolist()) if c]
+            ans_tok = tokenizer(
+                contrast_answers,
+                return_tensors="pt",
+                max_length=256,
+                truncation=True,
+                padding=True,
+            ).input_ids.to(device)
+            txt_emb = F.normalize(embed_fn(ans_tok).float().mean(dim=1), dim=-1)
+            L_contrast = siglip_contrastive_loss(vis_emb, txt_emb, log_temp, bias)
+            pos_cos = (vis_emb * txt_emb).sum(dim=-1).mean().item()
+            total_pos_cos += pos_cos
+            n_contrast += 1
+        else:
+            L_contrast = torch.tensor(0.0, device=device)
+
+        val_loss = (L_gen + contrast_weight * L_contrast).item()
+        total_loss += val_loss
         n += 1
 
     adapter.train()
     coder.train()
-    return total_loss / max(n, 1)
+    return total_loss / max(n, 1), total_pos_cos / max(n_contrast, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -295,31 +381,33 @@ def evaluate(adapter, coder, loader, image_token_id, embed_fn, device):
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Phase 2b — QLoRA fine-tuning")
-    parser.add_argument("--features_dir",   default="./precomputed_features_tiled")
-    parser.add_argument("--train_manifest", default="data_v2b/manifests/train.jsonl")
-    parser.add_argument("--val_manifest",   default="data_v2b/manifests/val.jsonl")
-    parser.add_argument("--coder_model",    default="deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct")
-    parser.add_argument("--batch_size",     type=int,   default=4)
-    parser.add_argument("--lr_lora",        type=float, default=2e-5,
+    parser = argparse.ArgumentParser(description="Phase 2b/3 — QLoRA fine-tuning + contrastive loss")
+    parser.add_argument("--features_dir",    default="./precomputed_features_tiled")
+    parser.add_argument("--train_manifest",  default="data_v2b/manifests/train.jsonl")
+    parser.add_argument("--val_manifest",    default="data_v2b/manifests/val.jsonl")
+    parser.add_argument("--coder_model",     default="deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct")
+    parser.add_argument("--batch_size",      type=int,   default=4)
+    parser.add_argument("--lr_lora",         type=float, default=2e-5,
                         help="Learning rate for LoRA parameters")
-    parser.add_argument("--lr_adapter",     type=float, default=1e-5,
-                        help="Learning rate for projection adapter (lower to protect contrastive init)")
-    parser.add_argument("--epochs",         type=int,   default=2)
-    parser.add_argument("--grad_accum",     type=int,   default=4)
-    parser.add_argument("--max_seq_length", type=int,   default=260)
-    parser.add_argument("--checkpoint_dir", default="./checkpoints/phase2b")
-    parser.add_argument("--eval_steps",     type=int,   default=200)
-    parser.add_argument("--log_steps",      type=int,   default=10)
-    parser.add_argument("--lora_r",         type=int,   default=16)
-    parser.add_argument("--lora_alpha",     type=int,   default=32)
-    parser.add_argument("--lora_dropout",   type=float, default=0.05)
-    parser.add_argument("--ckpt_interval",  type=int,   default=1800,
+    parser.add_argument("--lr_adapter",      type=float, default=1e-5,
+                        help="Learning rate for projection adapter (HARD LIMIT: never > 1e-5)")
+    parser.add_argument("--epochs",          type=int,   default=2)
+    parser.add_argument("--grad_accum",      type=int,   default=4)
+    parser.add_argument("--max_seq_length",  type=int,   default=260)
+    parser.add_argument("--checkpoint_dir",  default="./checkpoints/phase2b")
+    parser.add_argument("--eval_steps",      type=int,   default=200)
+    parser.add_argument("--log_steps",       type=int,   default=10)
+    parser.add_argument("--lora_r",          type=int,   default=16)
+    parser.add_argument("--lora_alpha",      type=int,   default=32)
+    parser.add_argument("--lora_dropout",    type=float, default=0.05)
+    parser.add_argument("--ckpt_interval",   type=int,   default=1800,
                         help="Seconds between time-based checkpoints (default: 1800 = 30 min)")
-    parser.add_argument("--resume",         type=str,   default=None,
+    parser.add_argument("--resume",          type=str,   default=None,
                         help="Explicit checkpoint to resume from; if None, auto-detects latest step_*.pt")
-    parser.add_argument("--init_from",      default="./checkpoints/phase2a_v6/best.pt",
+    parser.add_argument("--init_from",       default="./checkpoints/phase2a_v6/best.pt",
                         help="Phase 2a checkpoint to load adapter weights from (adapter only, not LoRA)")
+    parser.add_argument("--contrast_weight", type=float, default=0.1,
+                        help="Weight for SigLIP contrastive loss (default: 0.1)")
     args = parser.parse_args()
 
     # ==================================================================
@@ -385,7 +473,7 @@ def main():
     if is_main:
         coder.print_trainable_parameters()
 
-    # Gradient checkpointing (peft-compatible order: must call these after get_peft_model)
+    # Gradient checkpointing (peft-compatible order: must call after get_peft_model)
     coder.enable_input_require_grads()   # required for grad_ckpt with peft
     coder.gradient_checkpointing_enable()
     coder.train()
@@ -416,6 +504,11 @@ def main():
     if is_main:
         print(f"  Adapter parameters: {adapter.num_parameters():,}\n")
 
+    # Learnable contrastive parameters (SigLIP temperature + bias)
+    # bias=-10.0 is critical — prevents 63:1 neg:pos collapse (learned from contrastive_v3 failure)
+    log_temp = torch.nn.Parameter(torch.tensor([-2.659], device=device))  # exp(-2.659) ~= 0.07
+    bias     = torch.nn.Parameter(torch.tensor([-10.0],  device=device))
+
     # Capture embed_fn before DDP wrapping — same object reference remains valid after wrapping
     embed_fn = coder.get_input_embeddings()
 
@@ -437,22 +530,26 @@ def main():
         train_ds, batch_size=args.batch_size,
         sampler=train_sampler, shuffle=(train_sampler is None),
         num_workers=2, pin_memory=True,
+        collate_fn=collate_fn,
     )
     val_loader = DataLoader(
         val_ds, batch_size=args.batch_size,
         sampler=val_sampler, shuffle=False,
         num_workers=2, pin_memory=True,
+        collate_fn=collate_fn,
     )
 
     # ==================================================================
-    # 4.  Optimizer & scheduler — two param groups (different LRs)
+    # 4.  Optimizer & scheduler — three param groups (different LRs)
     # ==================================================================
-    lora_params    = [p for p in coder.parameters() if p.requires_grad]
-    adapter_params = list(adapter.parameters())
+    lora_params     = [p for p in coder.parameters() if p.requires_grad]
+    adapter_params  = list(adapter.parameters())
+    contrast_params = [log_temp, bias]
 
     optimizer = AdamW([
-        {"params": adapter_params, "lr": args.lr_adapter},
-        {"params": lora_params,    "lr": args.lr_lora},
+        {"params": adapter_params,  "lr": args.lr_adapter},
+        {"params": lora_params,     "lr": args.lr_lora},
+        {"params": contrast_params, "lr": args.lr_adapter},  # same lr as adapter
     ], weight_decay=0.0)
 
     total_steps  = len(train_loader) * args.epochs // args.grad_accum
@@ -465,7 +562,8 @@ def main():
         print(f"  Steps: {total_steps}   Warmup: {warmup_steps}")
         print(f"  Effective batch size: {eff_batch}  "
               f"(batch={args.batch_size} x accum={args.grad_accum} x gpus={world_size})")
-        print(f"  Epochs: {args.epochs}  lr_adapter={args.lr_adapter}  lr_lora={args.lr_lora}\n")
+        print(f"  Epochs: {args.epochs}  lr_adapter={args.lr_adapter}  lr_lora={args.lr_lora}  "
+              f"contrast_weight={args.contrast_weight}\n")
 
     # ==================================================================
     # 5.  Auto-resume (restores adapter, LoRA, optimizer, scheduler)
@@ -485,23 +583,29 @@ def main():
         best_val_loss = ckpt.get("best_val_loss", float("inf"))
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
         scheduler.load_state_dict(ckpt["scheduler_state_dict"])
+        if "log_temp" in ckpt:
+            log_temp.data = ckpt["log_temp"].to(device)
+            bias.data     = ckpt["bias"].to(device)
         if is_main:
             print(f"  Resumed: epoch={start_epoch}  step={start_step}  "
-                  f"best_val={best_val_loss:.4f}\n")
+                  f"best_val={best_val_loss:.4f}  "
+                  f"temp={log_temp.exp().item():.3f}  bias={bias.item():.3f}\n")
     elif is_main:
         print("No resume checkpoint found — starting from scratch\n")
 
     # ==================================================================
     # 6.  DDP wrapping (after auto-resume so state loads into raw modules)
     # ==================================================================
+    # Keep a reference to the raw inner coder BEFORE DDP wrapping.
+    # Used for the contrastive text-embedding forward pass (no_grad, bypasses DDP
+    # to avoid triggering static_graph tracking on a non-backward forward).
+    text_coder = coder
+
     if is_distributed:
         # static_graph=True: required when using peft + gradient_checkpointing + DDP.
-        # Gradient checkpointing recomputes activations during backward, which would
-        # trigger DDP's "parameter ready" hook twice — static_graph bypasses that check.
-        # Safe because LoRA params are in every attention layer (graph never changes).
-        # Note: static_graph is incompatible with find_unused_parameters=True.
         coder   = DDP(coder,   device_ids=[local_rank], static_graph=True)
         adapter = DDP(adapter, device_ids=[local_rank])
+        text_coder = coder.module  # same object as the pre-wrap reference
 
     # ==================================================================
     # 7.  Training loop
@@ -528,22 +632,51 @@ def main():
         )
 
         for batch_idx, batch in enumerate(progress):
-            ids  = batch["input_ids"].to(device)
-            lbl  = batch["labels"].to(device)
-            feat = batch["features"].to(device)
+            ids     = batch["input_ids"].to(device)
+            lbl     = batch["labels"].to(device)
+            feat    = batch["features"].to(device)
+            tasks   = batch["task_type"]    # list[str]
+            answers = batch["answer_text"]  # list[str]
 
             # Forward through DDP-wrapped adapter (syncs adapter grads across ranks)
-            projected  = adapter(feat.float()).half()
+            projected    = adapter(feat.float()).half()
             embeds, mask = replace_image_tokens(ids, projected, image_token_id, embed_fn)
             adj_labels   = expand_labels(lbl, ids, image_token_id, feat.size(1))
 
-            # Forward through DDP-wrapped coder (syncs LoRA grads across ranks)
-            loss = coder(inputs_embeds=embeds, attention_mask=mask, labels=adj_labels).loss
-            loss = loss / args.grad_accum
+            # Generation loss — all tasks
+            L_gen = coder(inputs_embeds=embeds, attention_mask=mask, labels=adj_labels).loss
+
+            # Contrastive loss — description and function_explanation only
+            c_mask = torch.tensor([t in CONTRASTIVE_TASKS for t in tasks], device=device)
+            n_contrast = c_mask.sum().item()
+
+            L_contrast = torch.tensor(0.0, device=device)
+            if n_contrast >= 2:
+                # Visual embedding: mean-pool adapter output, cast to fp32 for stability
+                vis_emb = projected[c_mask].float().mean(dim=1)   # [N, 2048]
+
+                # Text embedding: full coder forward on answer text (no grad)
+                # Uses text_coder (inner unwrapped module) to bypass DDP static_graph
+                contrast_answers = [answers[i] for i, c in enumerate(c_mask.tolist()) if c]
+                ans_tok = tokenizer(
+                    contrast_answers,
+                    return_tensors="pt",
+                    max_length=256,
+                    truncation=True,
+                    padding=True,
+                ).input_ids.to(device)
+                with torch.no_grad():
+                    txt_emb = embed_fn(ans_tok).float().mean(dim=1)  # [N, 2048]
+
+                vis_emb = F.normalize(vis_emb, dim=-1)
+                txt_emb = F.normalize(txt_emb, dim=-1)
+                L_contrast = siglip_contrastive_loss(vis_emb, txt_emb, log_temp, bias)
+
+            loss = (L_gen + args.contrast_weight * L_contrast) / args.grad_accum
             loss.backward()
 
             if (batch_idx + 1) % args.grad_accum == 0:
-                all_trainable = list(adapter.parameters()) + lora_params
+                all_trainable = list(adapter.parameters()) + lora_params + contrast_params
                 torch.nn.utils.clip_grad_norm_(all_trainable, 1.0)
                 optimizer.step()
                 scheduler.step()
@@ -556,6 +689,9 @@ def main():
                     lr_l = optimizer.param_groups[1]["lr"]
                     print(f"  step={global_step}  "
                           f"loss={loss.item() * args.grad_accum:.4f}  "
+                          f"L_gen={L_gen.item():.4f}  "
+                          f"L_contrast={L_contrast.item():.4f}  "
+                          f"temp={log_temp.exp().item():.3f}  bias={bias.item():.3f}  "
                           f"lr_adapter={lr_a:.2e}  lr_lora={lr_l:.2e}")
 
                 # Time-based checkpoint (rank 0 only, every ckpt_interval seconds)
@@ -564,6 +700,7 @@ def main():
                         adapter, coder, optimizer, scheduler,
                         global_step, epoch, best_val_loss,
                         args.checkpoint_dir, f"step_{global_step}", is_distributed,
+                        log_temp, bias,
                     )
                     _cleanup_old_checkpoints(args.checkpoint_dir)
                     last_ckpt_time = time.time()
@@ -572,20 +709,29 @@ def main():
                 if global_step % args.eval_steps == 0:
                     inner_adapter = adapter.module if is_distributed else adapter
                     inner_coder   = coder.module   if is_distributed else coder
-                    vl = evaluate(inner_adapter, inner_coder, val_loader,
-                                  image_token_id, embed_fn, device)
+                    vl, pos_cos = evaluate(
+                        inner_adapter, inner_coder, val_loader,
+                        image_token_id, embed_fn, device,
+                        log_temp, bias, tokenizer, args.contrast_weight,
+                    )
                     if is_distributed:
                         vl_t = torch.tensor(vl, device=device)
                         dist.all_reduce(vl_t, op=dist.ReduceOp.AVG)
                         vl = vl_t.item()
+                        pc_t = torch.tensor(pos_cos, device=device)
+                        dist.all_reduce(pc_t, op=dist.ReduceOp.AVG)
+                        pos_cos = pc_t.item()
                     if is_main:
-                        print(f"  step={global_step}  val_loss={vl:.4f}")
+                        print(f"  step={global_step}  val_loss={vl:.4f}  "
+                              f"val_pos_cos={pos_cos:.3f}  "
+                              f"temp={log_temp.exp().item():.3f}  bias={bias.item():.3f}")
                         if vl < best_val_loss:
                             best_val_loss = vl
                             save_checkpoint(
                                 adapter, coder, optimizer, scheduler,
                                 global_step, epoch, best_val_loss,
                                 args.checkpoint_dir, "best", is_distributed,
+                                log_temp, bias,
                             )
                     # Restore train mode (evaluate sets eval on inner modules)
                     adapter.train()
@@ -602,6 +748,7 @@ def main():
                 adapter, coder, optimizer, scheduler,
                 global_step, epoch, best_val_loss,
                 args.checkpoint_dir, f"epoch{epoch + 1}", is_distributed,
+                log_temp, bias,
             )
 
     # Final save — weights only (no optimizer state, smaller file for inference)
@@ -613,6 +760,8 @@ def main():
         torch.save({
             "adapter_state_dict": inner_adapter.state_dict(),
             "lora_state_dict":    lora_state,
+            "log_temp":           log_temp.detach().cpu(),
+            "bias":               bias.detach().cpu(),
         }, final_path)
         print(f"\nSaved final weights: {final_path}")
         print(f"Best validation loss: {best_val_loss:.4f}")
