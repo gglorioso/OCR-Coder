@@ -47,19 +47,19 @@ Where:
 - `L_generation` = cross-entropy next-token loss (ALL task types, unchanged)
 - `L_InfoNCE` = SigLIP contrastive loss (ONLY `description` and `function_explanation` tasks)
 - `visual_emb` = `mean_pool(adapter(features))` → [B, 2048], L2-normalized
-- `text_emb` = `mean_pool(embed_fn(answer_tokens))` → [B, 2048], L2-normalized, **no gradients**
+- `text_emb` = `mean_pool(coder_last_hidden(answer_tokens))` → [B, 2048], L2-normalized, **no gradients**
 
 ### Why SigLIP+bias (not plain InfoNCE)
 
 Plain InfoNCE failed at batch=64 (v2: val_cos=0.131). SigLIP without bias collapsed (v3: val_cos=-0.832). SigLIP+bias worked (v4: val_cos=0.840, bias=-9.005). Use SigLIP+bias.
 
-### Why embed_fn for text embedding
+### Why full coder forward pass for text embedding
 
-- `embed_fn` = `coder.get_input_embeddings()` — the token embedding lookup table
-- Already loaded in VRAM, zero extra memory
-- Not modified by LoRA (LoRA targets q_proj, kv_a_proj_with_mqa, kv_b_proj, o_proj)
-- Output is 2048D — same space as visual_emb, no projection head needed
-- Run with `torch.no_grad()` — text_emb is a fixed target, gradients only flow through adapter
+- Use `coder(input_ids=ans_tok, output_hidden_states=True).hidden_states[-1]` → mean-pool → 2048D
+- Contextual representations — "None filter crashes query" understood as a phrase, not isolated tokens
+- **Same encoder at inference**: bug report → coder forward → query vector; no separate text model needed
+- Coder already in VRAM (4-bit); extra forward at max_length=256 is fast under `torch.no_grad()`
+- Use the **unwrapped inner model** (`text_coder = coder` saved before DDP wrap) to bypass DDP's static graph tracking — the no_grad text forward must not interfere with the generation backward graph
 
 ### Which tasks feed InfoNCE
 
@@ -235,7 +235,8 @@ if n_contrast >= 2:
         padding=True,
     ).input_ids.to(device)
     with torch.no_grad():
-        txt_emb = embed_fn(ans_tok).float().mean(dim=1)      # [N, 2048]
+        hs = text_coder(input_ids=ans_tok, output_hidden_states=True).hidden_states[-1]
+        txt_emb = hs.float().mean(dim=1)                      # [N, 2048]
 
     vis_emb = F.normalize(vis_emb, dim=-1)
     txt_emb = F.normalize(txt_emb, dim=-1)
@@ -305,7 +306,8 @@ def evaluate(adapter, coder, loader, image_token_id, embed_fn, device,
             contrast_answers = [answers[i] for i, c in enumerate(c_mask.tolist()) if c]
             ans_tok = tokenizer(contrast_answers, return_tensors="pt",
                                 max_length=256, truncation=True, padding=True).input_ids.to(device)
-            txt_emb = F.normalize(embed_fn(ans_tok).float().mean(dim=1), dim=-1)
+            hs = coder(input_ids=ans_tok, output_hidden_states=True).hidden_states[-1]
+            txt_emb = F.normalize(hs.float().mean(dim=1), dim=-1)
             L_contrast = siglip_contrastive_loss(vis_emb, txt_emb, log_temp, bias)
             pos_cos = (vis_emb * txt_emb).sum(dim=-1).mean().item()
             total_pos_cos += pos_cos
@@ -395,7 +397,7 @@ For each image in the val set (description/function_explanation tasks only):
 
 - Load adapter weights from checkpoint: `adapter.load_state_dict(ckpt["adapter_state_dict"])`
 - Load LoRA weights into coder: `coder.load_state_dict(ckpt["lora_state_dict"], strict=False)`
-- `embed_fn = coder.get_input_embeddings()` — use for text embedding
+- Use full coder forward pass for text embedding: `coder(input_ids=..., output_hidden_states=True).hidden_states[-1]`
 - Filter val manifest to `task_type in {"description", "function_explanation"}` only
 - Run in `@torch.no_grad()` mode throughout
 - Report separately for `description` vs `function_explanation` tasks

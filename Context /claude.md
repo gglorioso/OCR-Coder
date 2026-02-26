@@ -7,18 +7,18 @@
 
 ## Quick Status
 
-**Current Phase:** Dual-track — MICS paper + Rosie competition (data expansion + retraining)
-**Last Updated:** 2026-02-24
+**Current Phase:** Phase 3 — Contrastive training debugging (phase2b_v5 ready to submit)
+**Last Updated:** 2026-02-26
 
-- ✅ **Linear probe COMPLETE (clean)** — Job 225980; Top-1=4.6%, Top-5=9.3%, **28.2× above random** on 614-class source-file classification; **encoder works, bottleneck is generation**
-- ✅ **Semantic eval COMPLETE** — Job 225948; Retrieval Recall@5=2.6% overall (3× random); function_explanation Recall@5=9.8% (11× random); description near-random (decoder hallucination)
-- ✅ **data_gen_2b.py parallelized** — `--n-workers` added; `data_gen_v3.sh` ready (16 workers, 8 styles ~2h); BUT 13 repos insufficient (transformers+pytorch=68% of data)
-- ✅ **Root cause identified** — Training tasks (function_listing/signatures) require impossible character-level visual accuracy → hallucination; generation loss ≠ retrieval training
+- ✅ **Contrastive loss integrated** — `train_phase2b.py` updated with SigLIP InfoNCE loss (L_gen + contrast_weight * L_InfoNCE)
+- ✅ **Three critical bugs fixed** — (1) torchrun path, (2) txt_emb space mismatch (hidden_states→embed_fn), (3) bias saturation (init -10→-5)
+- ⚠️ **phase2b_v4 COMPLETE** — val_pos_cos stuck at 0.419 (phase2a baseline); contrastive not training; root cause: bias=-10 saturated, contrast_weight=0.3 too low
+- 🔄 **phase2b_v5 READY** — bias_init=-5, contrast_weight=0.5, batch_size=8, epochs=2; submit with `sbatch coder_vl/train_phase2b_v2.sh`
 
-**Current Step: Fix training objective with contrastive loss**
-1. **Add InfoNCE contrastive loss** — `L_total = L_generation + 0.1 * L_InfoNCE(mean_pool(adapter_out), text_emb)`; directly trains visual-text alignment for retrieval; test on existing 13-repo data
-2. **Redesign tasks** — drop `function_listing`/`function_signatures`; triple `description`/`function_explanation`; add `domain_classification` + `has_import` binary tasks
-3. **Scrape 50 repos** — AFTER fixing training objective (more data with wrong loss = same result at larger scale)
+**Current Step: Submit phase2b_v5 and monitor val_pos_cos**
+1. **Submit job** — `sbatch coder_vl/train_phase2b_v2.sh` → checkpoint to `phase2b_v5`; watch val_pos_cos at step 200
+2. **If still flat at step 200** — next lever: load contrastive_v4 adapter weights (val_cos=0.840) as init_from instead of phase2a_v6
+3. **After convergence** — run `eval_retrieval.py` to check Recall@5; success threshold val_pos_cos>0.5, Recall@5>15%
 
 ---
 

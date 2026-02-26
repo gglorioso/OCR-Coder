@@ -505,9 +505,10 @@ def main():
         print(f"  Adapter parameters: {adapter.num_parameters():,}\n")
 
     # Learnable contrastive parameters (SigLIP temperature + bias)
-    # bias=-10.0 is critical — prevents 63:1 neg:pos collapse (learned from contrastive_v3 failure)
+    # bias=-10.0 was needed for contrastive_v4 (64 batch, 63:1 neg:pos ratio)
+    # bias=-5.0 safe here: batch_size=8, N=2-6 per GPU (5:1 ratio max), sigmoid has real slope at -5
     log_temp = torch.nn.Parameter(torch.tensor([-2.659], device=device))  # exp(-2.659) ~= 0.07
-    bias     = torch.nn.Parameter(torch.tensor([-10.0],  device=device))
+    bias     = torch.nn.Parameter(torch.tensor([-5.0],   device=device))
 
     # Capture embed_fn before DDP wrapping — same object reference remains valid after wrapping
     embed_fn = coder.get_input_embeddings()

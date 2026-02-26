@@ -18,14 +18,14 @@ cd "$REPO"
     --features_dir    ./precomputed_features_tiled \
     --train_manifest  data_v2b/manifests/train.jsonl \
     --val_manifest    data_v2b/manifests/val.jsonl \
-    --checkpoint_dir  ./checkpoints/phase2b_v4 \
+    --checkpoint_dir  ./checkpoints/phase2b_v5 \
     --init_from       ./checkpoints/phase2a_v6/best.pt \
     --batch_size      8 \
     --grad_accum      4 \
     --epochs          2 \
     --lr_adapter      1e-5 \
     --lr_lora         2e-5 \
-    --contrast_weight 0.3 \
+    --contrast_weight 0.5 \
     --eval_steps      200 \
     --log_steps       10 \
     --ckpt_interval   1800

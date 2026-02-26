@@ -274,7 +274,15 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **✅ COMPLETED (2026-02-24):** Training objective + evaluation strategy decided — contrastive loss required
+1. **🔄 IN PROGRESS (2026-02-26):** Phase 3 contrastive training — phase2b_v5 ready to submit
+   - **phase2b_v2 (job 226112):** Failed immediately — `torchrun` on PATH resolved to `~/.local/bin/torchrun` (system Python 3.12, missing pyyaml). Fix: added `TORCHRUN="$HOME/DS OCR/envs/deepseek-ocr/bin/torchrun"` to script.
+   - **phase2b_v3 (job 226284):** Killed at 6.5h — batch_size=4 gave N<2 for contrastive (only 29.3% tasks are contrastive type, P(N≥2)≈3%). Fix: batch_size 4→8 (P(N≥2)≈75%).
+   - **phase2b_v3 (job 226593):** Cancelled at step 400 — val_pos_cos=0.015→0.016 (flat/random). Root cause: `txt_emb` used `hidden_states[-1]` (LLM output space) vs `vis_emb` in input embedding space → space mismatch. Fix: changed to `embed_fn(ans_tok)` (raw token embeddings, same space as adapter output). Also raised contrast_weight 0.1→0.3.
+   - **phase2b_v4 (job 226755):** COMPLETE — val_pos_cos=0.419 throughout (flat). The 0.419 is phase2a_v6 baseline alignment, not contrastive learning. Root cause: bias_init=-10 saturated sigmoid (σ(-10)≈0.00005, essentially zero gradient for negative repulsion). Bias moved only 0.006 in 1252 steps at lr=1e-5. Fix: bias_init -10→-5 (σ(-5)≈0.0067, 147× stronger negative repulsion gradient). Also raised contrast_weight 0.3→0.5.
+   - **phase2b_v5 (pending):** Script ready — bias_init=-5, contrast_weight=0.5, batch_size=8, epochs=2, init_from=phase2a_v6/best.pt, checkpoint_dir=phase2b_v5. Submit: `sbatch coder_vl/train_phase2b_v2.sh`
+   - **If v5 val_pos_cos still flat at step 200:** Load contrastive_v4 adapter (val_cos=0.840) as init_from instead of phase2a_v6.
+
+2. **✅ COMPLETED (2026-02-24):** Training objective + evaluation strategy decided — contrastive loss required
    - **Probe B finding:** All 5,939 images labeled positive (labeling bug in fallback logic) → binary probe useless; Probe A results sufficient
    - **Clean probe results (job 225980):** Top-1=4.6%, Top-5=9.3%, 28.2× above random — CONFIRMED encoder works
    - **Root cause:** Training tasks (function_listing, function_signatures) require character-level visual accuracy model cannot achieve → hallucination. Description/explanation tasks are achievable but under-weighted.
