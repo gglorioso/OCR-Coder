@@ -274,7 +274,14 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **❌ IN PROGRESS (2026-02-27 session 3):** Both jobs failing — phase2b_v7 (227552) and Qwen (227553)
+1. **🔄 IN PROGRESS (2026-02-27 session 4):** MVV Phase 1.1 — feature extraction job 227555 submitted
+   - **Pipeline built:** `MVV/Phase_1_1/` — gen_mvv_images.py (AST-anchored, 1 file=1 class=1 image, 800×800 grayscale), extract_mvv_features.py (SigLIP-SO400M at 4 token budgets)
+   - **Images done (job 227548):** 8,980 PNGs in `MVV/Phase_1_1/data_mvv/images/`; 64.8% had docstring/license headers skipped by AST anchor
+   - **Features pending (job 227555):** 4 budgets × 8,980 images → [1152] fp16 vectors in `data_mvv/features/budget_{729,441,256,121}/`
+   - **Next:** Check job 227555 output; write `MVV/Phase_1_1/run_probe.py` — LogReg train on budget_729, test on 441/256/121, plot degradation curve
+   - **Resolution-as-Test paradigm:** train=729-token features (high-res), test=lower budgets of SAME images; only variable is resolution; no class imbalance
+
+2. **❌ IN PROGRESS (2026-02-27 session 3):** Both jobs failing — phase2b_v7 (227552) and Qwen (227553)
    - **All fixes applied this session:**
      - Track A: PYTHONNOUSERSITE=1 in train_phase2b_v2.sh; modeling_deepseek.py patched (try/except is_torch_fx_available removed in transformers 5.x)
      - Track B: cudnn.enabled=False (Conv3d cuDNN 9 sm70 no engine); LoRA targets=[q/k/v/o_proj only] (gate/up/down match ViT MLP too); single GPU $PYTHON not torchrun (transformers 5.x lazy loading breaks DDP broadcast_coalesced); PYTHONNOUSERSITE=1

@@ -7,17 +7,17 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — Two parallel tracks running
-**Last Updated:** 2026-02-27 (session 3)
+**Current Phase:** Phase 3 — MVV research track started (parallel to contrastive training)
+**Last Updated:** 2026-02-27 (session 4)
 
-- ✅ **precompute_2b DONE** (job 227473) — 16,159 .pt files, 28GB in precomputed_features_tiled/
-- ✅ **Track A (phase2b_v7) SUBMITTED** (job 227552) — DeepSeek+SigLIP contrastive, 2 GPUs, PYTHONNOUSERSITE=1; init from contrastive_v4/best.pt; 62,166 train / 3,375 val
-- ❌ **Track B (Qwen) FAILING AGAIN** (last job 227553) — fixed: cudnn.enabled=False, LoRA=[q/k/v/o_proj], single GPU, PYTHONNOUSERSITE=1; but still crashing; **next instance must check slurm-qwen-vl-227553.err**
-- ✅ **transformers .local pollution fixed** — modeling_deepseek.py patched (try/except is_torch_fx_available); PYTHONNOUSERSITE=1 in all .sh files
+- ✅ **MVV Phase 1.1 pipeline built** — monochrome image gen + feature extraction sweep; `MVV/Phase_1_1/` directory
+- ✅ **8,980 images generated** (job 227548) — 1 file = 1 class = 1 image, AST-anchored, 800×800 grayscale
+- 🔄 **Feature extraction running** (job 227555) — SigLIP-SO400M at 4 budgets (729/441/256/121 tokens) → `data_mvv/features/budget_N/`
+- ⚠️ **Contrastive track (phase2b_v7, job 227552) status unknown** — check if still running
 
-**Current Step: Investigate Qwen job 227553 failure + monitor phase2b_v7**
-1. **Check Qwen 227553 error** — `cat slurm-qwen-vl-227553.err` and diagnose new failure mode
-2. **Monitor Track A** — `tail -f slurm-phase2b-v2-227552.out`; first log at ~80 steps; first eval at step 200
+**Current Step: Wait for job 227555, then write linear probe**
+1. **Check job 227555** — `cat extract_mvv_features.out`; expect 8,980 vectors in each of 4 budget dirs
+2. **Write run_probe.py** — train LogReg on budget_729 features, test on 441/256/121, plot degradation curve
 
 ---
 
