@@ -274,7 +274,15 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **🔄 IN PROGRESS (2026-02-27 session 2):** Data re-rendered; precompute running; Qwen still failing
+1. **❌ IN PROGRESS (2026-02-27 session 3):** Both jobs failing — phase2b_v7 (227552) and Qwen (227553)
+   - **All fixes applied this session:**
+     - Track A: PYTHONNOUSERSITE=1 in train_phase2b_v2.sh; modeling_deepseek.py patched (try/except is_torch_fx_available removed in transformers 5.x)
+     - Track B: cudnn.enabled=False (Conv3d cuDNN 9 sm70 no engine); LoRA targets=[q/k/v/o_proj only] (gate/up/down match ViT MLP too); single GPU $PYTHON not torchrun (transformers 5.x lazy loading breaks DDP broadcast_coalesced); PYTHONNOUSERSITE=1
+   - **Both jobs 227552 and 227553 failed** — next session must check both error logs
+   - **Qwen fix history:** job 227470 (Conv3d) → job 227477 (LoRA in ViT) → job 227537 (DDP broadcast) → job 227553 (unknown, check err)
+   - **Root cause of all conflicts:** Qwen .sh ran pip install --user transformers>=4.49 → polluted ~/.local with 5.x; breaking is_torch_fx_available for DeepSeek. Fixed with PYTHONNOUSERSITE=1 everywhere.
+
+2. **🔄 IN PROGRESS (2026-02-27 session 2):** Data re-rendered; precompute running; Qwen still failing (SUPERSEDED)
    - **Data re-render DONE (job 227434):** CHUNK_SIZE=200 (was 500). 16,160 images, 70,270 examples in data_v2b/. Old images + manifests deleted first. data_gen_2b.sh now has --chunk-size 200 --n-workers 12.
    - **precompute_2b RUNNING (job 227473):** PYTHONNOUSERSITE=1 added to precompute_2b.sh to isolate from Qwen's transformers>=4.49 upgrade. ~2.15 it/s, ETA ~2hr. Old stale features deleted (~32GB freed).
    - **Qwen SDPA blocker:** flash_attn cannot be compiled (no nvcc on dgx nodes, CUDA_HOME=/usr/local/cuda-12.9 has no nvcc). math_sdp OOMs at 2048 tokens (vision ViT attention = ~4.3GB for 32 layers). mem_efficient_sdp fails: "GET was unable to find an engine" — Qwen2.5-VL ViT shapes not compatible with this backend on V100.

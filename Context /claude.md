@@ -7,18 +7,17 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — Two parallel tracks: SigLIP+DeepSeek (Track A) + Qwen2.5-VL fine-tune (Track B)
-**Last Updated:** 2026-02-27
+**Current Phase:** Phase 3 — Two parallel tracks running
+**Last Updated:** 2026-02-27 (session 3)
 
-- ✅ **Data re-rendered** — CHUNK_SIZE=200 (was 500); 16,160 images, 70,270 examples (job 227434); data_v2b/ rebuilt clean
-- 🔄 **precompute_2b RUNNING** (job 227473) — ~2.15 it/s, ETA ~2hr; 4hr walltime; PYTHONNOUSERSITE=1 fix applied
-- ❌ **Qwen VL FAILING** (last job 227470) — error: "GET was unable to find an engine to execute this computation"; mem_efficient_sdp not supported by Qwen2.5-VL's ViT on V100; next fix needed
-- ⚠️ **Qwen SDPA blocker** — flash_attn uninstallable (no nvcc on dgx nodes); math_sdp OOMs at 2048 tokens; mem_efficient_sdp fails with "no engine" error; need to reduce MAX_PIXELS
+- ✅ **precompute_2b DONE** (job 227473) — 16,159 .pt files, 28GB in precomputed_features_tiled/
+- ✅ **Track A (phase2b_v7) SUBMITTED** (job 227552) — DeepSeek+SigLIP contrastive, 2 GPUs, PYTHONNOUSERSITE=1; init from contrastive_v4/best.pt; 62,166 train / 3,375 val
+- ❌ **Track B (Qwen) FAILING AGAIN** (last job 227553) — fixed: cudnn.enabled=False, LoRA=[q/k/v/o_proj], single GPU, PYTHONNOUSERSITE=1; but still crashing; **next instance must check slurm-qwen-vl-227553.err**
+- ✅ **transformers .local pollution fixed** — modeling_deepseek.py patched (try/except is_torch_fx_available); PYTHONNOUSERSITE=1 in all .sh files
 
-**Current Step: Fix Qwen SDPA engine error**
-1. **Fix Qwen OOM** — In `qwen_vl/train_qwen_vl.py`: re-enable math_sdp as fallback (`enable_math_sdp(True)`) AND reduce `MAX_PIXELS = 1280 * 28 * 28` (~1280 tokens). Readability tradeoff accepted: 5.6px/char vs 6.5px/char threshold. Then `sbatch qwen_vl/train_qwen_vl.sh`
-2. **Monitor precompute** — check `slurm-precompute-2b-227473.out`; expect ~16,160 .pt files in precomputed_features_tiled/ when done
-3. **After precompute done** — submit Track A training: `sbatch coder_vl/train_phase2b_v2.sh` (or current phase2b script)
+**Current Step: Investigate Qwen job 227553 failure + monitor phase2b_v7**
+1. **Check Qwen 227553 error** — `cat slurm-qwen-vl-227553.err` and diagnose new failure mode
+2. **Monitor Track A** — `tail -f slurm-phase2b-v2-227552.out`; first log at ~80 steps; first eval at step 200
 
 ---
 
