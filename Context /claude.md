@@ -7,18 +7,18 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — Contrastive training debugging (phase2b_v5 ready to submit)
-**Last Updated:** 2026-02-26
+**Current Phase:** Phase 3 — Two parallel tracks: SigLIP+DeepSeek (Track A) + Qwen2.5-VL fine-tune (Track B)
+**Last Updated:** 2026-02-27
 
-- ✅ **Contrastive loss integrated** — `train_phase2b.py` updated with SigLIP InfoNCE loss (L_gen + contrast_weight * L_InfoNCE)
-- ✅ **Three critical bugs fixed** — (1) torchrun path, (2) txt_emb space mismatch (hidden_states→embed_fn), (3) bias saturation (init -10→-5)
-- ⚠️ **phase2b_v4 COMPLETE** — val_pos_cos stuck at 0.419 (phase2a baseline); contrastive not training; root cause: bias=-10 saturated, contrast_weight=0.3 too low
-- 🔄 **phase2b_v5 READY** — bias_init=-5, contrast_weight=0.5, batch_size=8, epochs=2; submit with `sbatch coder_vl/train_phase2b_v2.sh`
+- ⚠️ **phase2b_v5 COMPLETE** — val_pos_cos=0.423 (flat); root cause: phase2a adapter leaves visual embeddings far from text space → InfoNCE gradient near-zero
+- 🔄 **phase2b_v6 RUNNING** (job 227177) — init_from=contrastive_v4/best.pt (val_cos=0.840); contrastive gradients non-trivial from step 1
+- 🔄 **Qwen2.5-VL Track B READY** — scripts in `qwen_vl/`; fixed OOM + NCCL + fp16 + image filter; resubmit with `sbatch qwen_vl/train_qwen_vl.sh`
+- ⚠️ **Resolution problem found** — 75% of training images compress to 4.5px/char at 2048 tokens (unreadable); long-term fix needed
 
-**Current Step: Submit phase2b_v5 and monitor val_pos_cos**
-1. **Submit job** — `sbatch coder_vl/train_phase2b_v2.sh` → checkpoint to `phase2b_v5`; watch val_pos_cos at step 200
-2. **If still flat at step 200** — next lever: load contrastive_v4 adapter weights (val_cos=0.840) as init_from instead of phase2a_v6
-3. **After convergence** — run `eval_retrieval.py` to check Recall@5; success threshold val_pos_cos>0.5, Recall@5>15%
+**Current Step: Monitor v6 + submit Qwen VL + plan data re-render**
+1. **Check v6 at step 200** — `slurm-phase2b-v2-227177.out`; success = val_pos_cos > 0.5
+2. **Submit Qwen VL** — `sbatch qwen_vl/train_qwen_vl.sh` (gradient checkpointing + fp16 + max_image_height=3500 filter applied)
+3. **Re-render training data** — change `CHUNK_SIZE=200` in `Data Crawling/data_gen_2b.py` and re-run; gives readable images (≥6.5px/char) at 2048 tokens for all files; eliminates 122M-pixel decompression bomb images
 
 ---
 

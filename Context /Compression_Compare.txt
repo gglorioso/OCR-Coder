@@ -1,0 +1,62 @@
+The search for "Minimum Viable Vision" (MVV) of code.
+
+Tests to Run
+Baseline probes — run on all 3 methods at matched token budgets
+    Source-file classification (Top-1, Top-5) — 614-class linear probe, measures semantic content preserved
+    Structural regression (line count, function count, class count) — R², measures structural information preserved
+    Binary properties (has_class, has_function, has_imports) — simple sanity checks
+
+Syntactic texture probes — the novel contribution, run on all 3 methods
+    Indentation style (tabs vs spaces) — binary
+    Nesting depth (shallow/medium/deep) — 3-class
+    Line density (mean characters per line) — regression
+    Keyword density (Python keywords / total tokens) — regression
+
+Degradation curve — run each method across a sweep of token budgets (128, 256, 432, 720, 1120)
+    Plot Top-1 accuracy vs. token count for all 3 methods on the same graph
+    Find where each method's curve "knees" — that's the publishable result
+    File size stratification — run the degradation curve separately for small (<100 lines), medium (100–500), large (>500)
+
+Tests whether large files are disproportionately hurt by downsampling
+
+
+Phase 1: Pure Methods
+    Tiling vs. Pooling vs. Downsampling
+        Identify which "texture" features (indentation vs. keywords) 
+        break first under each method
+
+Phase 2: The Frontier
+    (Tiling + Pooling) vs. Downsampling
+        Prove that preserving aspect ratio (Tiling) 
+        while compressing features (Pooling) is strictly 
+        better than raw resizing.
+
+
+3. Why Your Study is Unique
+Most existing research focuses on Semantic Accuracy 
+(Did the model answer the question correctly?). 
+Your "Syntactic Texture Probes" go deeper.
+
+By looking at indentation style and nesting depth, 
+you are essentially testing Spatial Topology preservation.
+Standard papers don't usually measure if a model "perceives" 
+the difference between 4 spaces and a tab; they only care 
+if it can read the variable name. Finding the "knee" where
+a model can still "see" code structure but can no longer "read" 
+keywords would be a significant contribution to VLM 
+interpretability.
+
+
+The Test: Show the model an image where 
+the code is perfectly indented (Structure) 
+but the text is actually just random Greek 
+letters (Fake Semantics).
+
+The Result: If the model says, "This looks like a nested 
+Python function," it proves the Vision Encoder is 
+extracting Code-Specific Topology.
+
+Why this is a mic drop: No one has ever proven that VLMs have a
+"Mental Model" of what code looks like independent of
+the words. If you prove that, you've discovered a new 
+way the "transplanted brain" perceives its world

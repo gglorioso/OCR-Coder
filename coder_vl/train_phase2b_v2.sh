@@ -18,8 +18,8 @@ cd "$REPO"
     --features_dir    ./precomputed_features_tiled \
     --train_manifest  data_v2b/manifests/train.jsonl \
     --val_manifest    data_v2b/manifests/val.jsonl \
-    --checkpoint_dir  ./checkpoints/phase2b_v5 \
-    --init_from       ./checkpoints/phase2a_v6/best.pt \
+    --checkpoint_dir  ./checkpoints/phase2b_v6 \
+    --init_from       ./checkpoints/contrastive_v4/best.pt \
     --batch_size      8 \
     --grad_accum      4 \
     --epochs          2 \
