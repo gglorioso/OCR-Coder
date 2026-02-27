@@ -274,13 +274,13 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **🔄 IN PROGRESS (2026-02-27):** Two parallel tracks — Track A (SigLIP+DeepSeek) + Track B (Qwen2.5-VL)
-   - **Track A — phase2b_v6 (job 227177):** Running on dgx. init_from=contrastive_v4/best.pt (val_cos=0.840). Watch val_pos_cos at step 200; success = >0.5. History: v5 (job 227068) val_pos_cos=0.423 flat — phase2a adapter leaves embeddings orthogonal to text space, near-zero InfoNCE gradient.
-   - **Track B — Qwen2.5-VL:** Scripts in `qwen_vl/`. Four fixes applied: NCCL IB disable, fp16+GradScaler on V100 (compute capability ≥8 check), gradient checkpointing, max_image_height=3500 filter. Submit: `sbatch qwen_vl/train_qwen_vl.sh`
-   - **Resolution problem discovered:** 75% of training images are 500-line/7520px chunks. At 2048-token budget → 4.5px/char (unreadable). Current filter (max_image_height=3500) keeps ~44% of data at ≥7px/char readable.
-   - **⚠️ LONG-TERM DATA FIX REQUIRED:** Re-render training images with `CHUNK_SIZE=200` (change line 49 in `Data Crawling/data_gen_2b.py`). At 200 lines, max image height ≈ 3000px → ≥6.5px/char at 2048 tokens for ALL images. Also eliminates 122M-pixel decompression bomb images (500-line chunks with wide code exceed PIL's 89M-pixel safety limit and crash training). Re-run: `sbatch "Data Crawling/data_gen_2b.sh"` after changing CHUNK_SIZE. New images go to `data_v2b/images/`, new manifests to `data_v2b/manifests/`.
-   - **Sniper Method plan:** `Context /SNIPER_METHOD_PLAN.md` — two-stage localization architecture; token budgets; adaptive compression roadmap; CV task analogies for paper.
-   - **New files:** `qwen_vl/train_qwen_vl.py`, `qwen_vl/train_qwen_vl.sh`, `Context /SNIPER_METHOD_PLAN.md`
+1. **🔄 IN PROGRESS (2026-02-27 session 2):** Data re-rendered; precompute running; Qwen still failing
+   - **Data re-render DONE (job 227434):** CHUNK_SIZE=200 (was 500). 16,160 images, 70,270 examples in data_v2b/. Old images + manifests deleted first. data_gen_2b.sh now has --chunk-size 200 --n-workers 12.
+   - **precompute_2b RUNNING (job 227473):** PYTHONNOUSERSITE=1 added to precompute_2b.sh to isolate from Qwen's transformers>=4.49 upgrade. ~2.15 it/s, ETA ~2hr. Old stale features deleted (~32GB freed).
+   - **Qwen SDPA blocker:** flash_attn cannot be compiled (no nvcc on dgx nodes, CUDA_HOME=/usr/local/cuda-12.9 has no nvcc). math_sdp OOMs at 2048 tokens (vision ViT attention = ~4.3GB for 32 layers). mem_efficient_sdp fails: "GET was unable to find an engine" — Qwen2.5-VL ViT shapes not compatible with this backend on V100.
+   - **Next Qwen fix:** Edit `qwen_vl/train_qwen_vl.py` — change `MAX_PIXELS = 1280 * 28 * 28` AND re-enable math_sdp (`enable_math_sdp(True)`). At 1280 tokens, math attention = ~1.7GB → fits in 32GB. Readability: 5.6px/char (below 6.5 threshold but usable). Then resubmit.
+   - **Transformers version conflict resolved:** Qwen job installs transformers>=4.49 to ~/.local; precompute needs older version for deepseek-ocr-2 (LlamaFlashAttention2 import). Fix: PYTHONNOUSERSITE=1 in precompute_2b.sh.
+   - **Rosie dgx fact:** No nvcc anywhere on compute nodes (CUDA runtime only, no toolkit). flash-attn compilation impossible. Must use PyTorch built-in attention or reduce token count.
 
 2. **✅ COMPLETED (2026-02-24):** Training objective + evaluation strategy decided — contrastive loss required
    - **Probe B finding:** All 5,939 images labeled positive (labeling bug in fallback logic) → binary probe useless; Probe A results sufficient

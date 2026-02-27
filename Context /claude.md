@@ -10,15 +10,15 @@
 **Current Phase:** Phase 3 — Two parallel tracks: SigLIP+DeepSeek (Track A) + Qwen2.5-VL fine-tune (Track B)
 **Last Updated:** 2026-02-27
 
-- ⚠️ **phase2b_v5 COMPLETE** — val_pos_cos=0.423 (flat); root cause: phase2a adapter leaves visual embeddings far from text space → InfoNCE gradient near-zero
-- 🔄 **phase2b_v6 RUNNING** (job 227177) — init_from=contrastive_v4/best.pt (val_cos=0.840); contrastive gradients non-trivial from step 1
-- 🔄 **Qwen2.5-VL Track B READY** — scripts in `qwen_vl/`; fixed OOM + NCCL + fp16 + image filter; resubmit with `sbatch qwen_vl/train_qwen_vl.sh`
-- ⚠️ **Resolution problem found** — 75% of training images compress to 4.5px/char at 2048 tokens (unreadable); long-term fix needed
+- ✅ **Data re-rendered** — CHUNK_SIZE=200 (was 500); 16,160 images, 70,270 examples (job 227434); data_v2b/ rebuilt clean
+- 🔄 **precompute_2b RUNNING** (job 227473) — ~2.15 it/s, ETA ~2hr; 4hr walltime; PYTHONNOUSERSITE=1 fix applied
+- ❌ **Qwen VL FAILING** (last job 227470) — error: "GET was unable to find an engine to execute this computation"; mem_efficient_sdp not supported by Qwen2.5-VL's ViT on V100; next fix needed
+- ⚠️ **Qwen SDPA blocker** — flash_attn uninstallable (no nvcc on dgx nodes); math_sdp OOMs at 2048 tokens; mem_efficient_sdp fails with "no engine" error; need to reduce MAX_PIXELS
 
-**Current Step: Monitor v6 + submit Qwen VL + plan data re-render**
-1. **Check v6 at step 200** — `slurm-phase2b-v2-227177.out`; success = val_pos_cos > 0.5
-2. **Submit Qwen VL** — `sbatch qwen_vl/train_qwen_vl.sh` (gradient checkpointing + fp16 + max_image_height=3500 filter applied)
-3. **Re-render training data** — change `CHUNK_SIZE=200` in `Data Crawling/data_gen_2b.py` and re-run; gives readable images (≥6.5px/char) at 2048 tokens for all files; eliminates 122M-pixel decompression bomb images
+**Current Step: Fix Qwen SDPA engine error**
+1. **Fix Qwen OOM** — In `qwen_vl/train_qwen_vl.py`: re-enable math_sdp as fallback (`enable_math_sdp(True)`) AND reduce `MAX_PIXELS = 1280 * 28 * 28` (~1280 tokens). Readability tradeoff accepted: 5.6px/char vs 6.5px/char threshold. Then `sbatch qwen_vl/train_qwen_vl.sh`
+2. **Monitor precompute** — check `slurm-precompute-2b-227473.out`; expect ~16,160 .pt files in precomputed_features_tiled/ when done
+3. **After precompute done** — submit Track A training: `sbatch coder_vl/train_phase2b_v2.sh` (or current phase2b script)
 
 ---
 
