@@ -3,7 +3,8 @@
 Fine-tune Qwen2.5-VL-7B-Instruct for code image understanding (Sniper Method Stage 2).
 
 Tasks:  description + function_explanation  (robust to image compression)
-Tokens: ~2048 visual tokens per image  (~8-10px/char, readable monospace code)
+Tokens: ~2048 visual tokens per image  (~6.5px/char, readable monospace code)
+Attn:   mem_efficient_sdp (PyTorch built-in, O(n) memory — no flash_attn needed)
 LoRA:   r=16 on q/k/v/o/gate/up/down_proj  (LLM layers only, vision encoder frozen)
 Loss:   causal LM on assistant tokens only
 """
@@ -28,7 +29,7 @@ from peft import LoraConfig, get_peft_model, TaskType
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-MAX_PIXELS     = 2048 * 28 * 28   # ~2048 visual tokens  (~8-10px/char)
+MAX_PIXELS     = 2048 * 28 * 28   # ~2048 visual tokens  (~6.5px/char for 200-line chunks)
 TASK_FILTER    = {"description", "function_explanation"}
 IGNORE_INDEX   = -100
 
@@ -333,6 +334,18 @@ def main():
         max_pixels=MAX_PIXELS,
     )
 
+    # Disable cuDNN for all ops — cuDNN 9 on V100 (sm70) has no engine for Qwen2.5-VL's
+    # Conv3d patch embed (kernel=(2,14,14), stride=(2,14,14)).  Falls back to PyTorch's
+    # own CUDA conv kernels which work on any GPU (~10-20% slower, but reliable).
+    torch.backends.cudnn.enabled = False
+
+    # Force memory-efficient SDPA backend — avoids materializing full n²attention matrix.
+    # flash_sdp requires flash_attn (no nvcc on Rosie); math_sdp OOMs at 2048 tokens.
+    # mem_efficient_sdp is built into PyTorch 2.0+ and works on V100 (sm70) with fp16.
+    torch.backends.cuda.enable_flash_sdp(False)
+    torch.backends.cuda.enable_mem_efficient_sdp(True)
+    torch.backends.cuda.enable_math_sdp(False)
+
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         args.model_name,
         torch_dtype=amp_dtype,
@@ -356,8 +369,11 @@ def main():
         r=args.lora_r,
         lora_alpha=args.lora_alpha,
         # Target LLM attention + MLP layers; "model.layers" ensures we skip vision layers
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"],
+        # Only target LLM attention layers. gate/up/down_proj also exist in the
+        # ViT MLP (Qwen2_5_VisionMLP) and PEFT matches on leaf name only — applying
+        # LoRA there causes a CUDA invalid argument error on the frozen vision encoder.
+        # ViT attention uses a fused 'qkv' projection, so q/k/v/o_proj are LLM-only.
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
         lora_dropout=args.lora_dropout,
         bias="none",
         task_type=TaskType.CAUSAL_LM,

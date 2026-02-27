@@ -39,6 +39,10 @@ nvidia-smi
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 cd "$HOME/CoderOCR/OCR-Coder" || exit 1
 
+# Isolate from ~/.local packages installed by other jobs (e.g. transformers>=4.49 for Qwen).
+# Precompute needs the conda env's original transformers, not the Qwen-upgraded one.
+export PYTHONNOUSERSITE=1
+
 MANIFEST_DIR="$HOME/CoderOCR/OCR-Coder/data_v2b/manifests"
 OUTPUT_DIR="$HOME/CoderOCR/OCR-Coder/precomputed_features_tiled"
 

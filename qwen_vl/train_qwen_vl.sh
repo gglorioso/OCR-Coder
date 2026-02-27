@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=qwen-vl-v1
 #SBATCH --partition=dgx
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
 #SBATCH --time=24:00:00
@@ -22,6 +22,11 @@ export NCCL_P2P_DISABLE=1
 # Reduce CUDA memory fragmentation (helps fit 7B model on 32GB V100)
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+# NOTE: Do NOT set PYTHONNOUSERSITE=1 here. Qwen2.5-VL requires ~/.local/transformers (5.x,
+# installed via pip --user) because the conda env's transformers does not export
+# Qwen2_5_VLForConditionalGeneration at the top-level path.
+# Phase2b uses PYTHONNOUSERSITE=1 (needs DeepSeek's modeling_deepseek.py); these are isolated.
+
 # ------------------------------------------------------------------
 # Install required packages (transformers>=4.49 for Qwen2.5-VL,
 # qwen-vl-utils for image processing helpers).
@@ -34,6 +39,8 @@ echo "Checking dependencies..."
     "$PYTHON" -m pip install --user --quiet "transformers>=4.49.0" "qwen-vl-utils>=0.0.8"
     echo "Dependencies installed."
 }
+# flash-attn requires nvcc which is not available on Rosie dgx nodes.
+# We use PyTorch's built-in mem_efficient_sdp backend instead (set in train_qwen_vl.py).
 
 # ------------------------------------------------------------------
 # Verify model is downloaded (must pre-download on login node)
@@ -52,7 +59,10 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Starting training..."
-"$TORCHRUN" --nproc_per_node=2 qwen_vl/train_qwen_vl.py \
+# Single GPU — avoids DDP _broadcast_coalesced "invalid argument" error caused by
+# transformers 5.x lazy weight loading not fully materializing params before NCCL sync.
+# 7B fp16 (~14GB) + overhead (~4GB) fits comfortably on one 32GB V100.
+"$PYTHON" qwen_vl/train_qwen_vl.py \
     --model_name      "$MODEL" \
     --train_manifest  data_v2b/manifests/train.jsonl \
     --val_manifest    data_v2b/manifests/val.jsonl \
