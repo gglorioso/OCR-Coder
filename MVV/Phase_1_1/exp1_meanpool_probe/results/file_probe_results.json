@@ -1,0 +1,33 @@
+{
+  "probe": "per_file",
+  "n_classes": 8980,
+  "feature_dim": 1152,
+  "random_baseline_top1": 0.00011136,
+  "train_budget": 729,
+  "budgets": {
+    "729": {
+      "top1_acc": 0.000111,
+      "top5_acc": 0.000557,
+      "lift_top1": 1.0,
+      "lift_top5": 1.0
+    },
+    "441": {
+      "top1_acc": 0.000111,
+      "top5_acc": 0.000557,
+      "lift_top1": 1.0,
+      "lift_top5": 1.0
+    },
+    "256": {
+      "top1_acc": 0.000111,
+      "top5_acc": 0.000557,
+      "lift_top1": 1.0,
+      "lift_top5": 1.0
+    },
+    "121": {
+      "top1_acc": 0.000111,
+      "top5_acc": 0.000557,
+      "lift_top1": 1.0,
+      "lift_top5": 1.0
+    }
+  }
+}

@@ -31,7 +31,7 @@ echo "=================================================="
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 cd "$HOME/CoderOCR/OCR-Coder" || exit 1
 
-"$PYTHON" MVV/Phase_1_1/extract_mvv_features.py \
+"$PYTHON" MVV/Phase_1_1/exp1_meanpool_probe/scripts/extract_features.py \
     --data-dir   MVV/Phase_1_1/data_mvv \
     --model      google/siglip-so400m-patch14-384 \
     --batch-size 32 \

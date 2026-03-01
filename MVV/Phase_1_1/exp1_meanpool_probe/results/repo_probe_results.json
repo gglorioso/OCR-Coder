@@ -1,0 +1,84 @@
+{
+  "probe": "repo",
+  "n_classes": 15,
+  "feature_dim": 1152,
+  "random_baseline_top1": 0.066667,
+  "train_budget": 729,
+  "repos": [
+    "black",
+    "click",
+    "cpython",
+    "django",
+    "fastapi",
+    "flask",
+    "httpx",
+    "numpy",
+    "pandas",
+    "poetry",
+    "pydantic",
+    "pytorch",
+    "requests",
+    "scikit-learn",
+    "transformers"
+  ],
+  "samples_per_repo": {
+    "black": 246,
+    "click": 38,
+    "cpython": 867,
+    "django": 1182,
+    "fastapi": 508,
+    "flask": 31,
+    "httpx": 21,
+    "numpy": 211,
+    "pandas": 317,
+    "poetry": 169,
+    "pydantic": 162,
+    "pytorch": 2454,
+    "requests": 22,
+    "scikit-learn": 618,
+    "transformers": 2134
+  },
+  "budgets": {
+    "729": {
+      "top1_acc": 0.763474,
+      "top3_acc": 0.895434,
+      "lift_top1": 11.45,
+      "lift_top3": 4.48
+    },
+    "441": {
+      "top1_acc": 0.726392,
+      "top3_acc": 0.880958,
+      "lift_top1": 10.9,
+      "lift_top3": 4.4
+    },
+    "256": {
+      "top1_acc": 0.614588,
+      "top3_acc": 0.832962,
+      "lift_top1": 9.22,
+      "lift_top3": 4.16
+    },
+    "121": {
+      "top1_acc": 0.280846,
+      "top3_acc": 0.504009,
+      "lift_top1": 4.21,
+      "lift_top3": 2.52
+    }
+  },
+  "per_repo_accuracy_at_729": {
+    "black": 0.374,
+    "click": 0.0,
+    "cpython": 0.4937,
+    "django": 0.9171,
+    "fastapi": 0.8386,
+    "flask": 0.0,
+    "httpx": 0.0,
+    "numpy": 0.0,
+    "pandas": 0.3943,
+    "poetry": 0.0059,
+    "pydantic": 0.0,
+    "pytorch": 0.9466,
+    "requests": 0.0,
+    "scikit-learn": 0.7249,
+    "transformers": 0.9039
+  }
+}

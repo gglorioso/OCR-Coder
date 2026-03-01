@@ -7,17 +7,17 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — MVV research track started (parallel to contrastive training)
-**Last Updated:** 2026-02-27 (session 4)
+**Current Phase:** Phase 3 — MVV Phase 1.1 complete (exp1 + exp2 done); Phase 1.2 TBD
+**Last Updated:** 2026-03-01 (session 5)
 
-- ✅ **MVV Phase 1.1 pipeline built** — monochrome image gen + feature extraction sweep; `MVV/Phase_1_1/` directory
-- ✅ **8,980 images generated** (job 227548) — 1 file = 1 class = 1 image, AST-anchored, 800×800 grayscale
-- 🔄 **Feature extraction running** (job 227555) — SigLIP-SO400M at 4 budgets (729/441/256/121 tokens) → `data_mvv/features/budget_N/`
-- ⚠️ **Contrastive track (phase2b_v7, job 227552) status unknown** — check if still running
+- ✅ **Exp1 (mean-pool probe) DONE** — per-file: null result (cos sim=0.94, features collapsed); repo-level: 76.3%@729→28.1%@121, knee at 256→121
+- ✅ **Exp2 (adaptive max-pool) DONE** — 8×8 beats mean-pool below 256 tokens (36.0% vs 28.1%@121); mean-pool wins at 729 (76.3% vs 69.8%)
+- ✅ **Phase_1_1/ reorganized** — `shared/`, `exp1_meanpool_probe/`, `exp2_maxpool_comparison/` with scripts+data+results per experiment
+- ⚠️ **Contrastive track (phase2b_v7) and Qwen status unknown** — check job logs
 
-**Current Step: Wait for job 227555, then write linear probe**
-1. **Check job 227555** — `cat extract_mvv_features.out`; expect 8,980 vectors in each of 4 budget dirs
-2. **Write run_probe.py** — train LogReg on budget_729 features, test on 441/256/121, plot degradation curve
+**Current Step: Decide Phase 1.2 experiment direction**
+1. **Options:** (a) patch-token NN retrieval instead of LogReg probe, (b) syntax-highlighted colour images, (c) balanced repo sampling
+2. **Check phase2b_v7 / Qwen job status** — may need resubmission
 
 ---
 

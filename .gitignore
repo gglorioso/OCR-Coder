@@ -29,6 +29,7 @@ precomputed_features_tiled/
 data_v2/
 data_v2b/
 MVV/Phase_1_1/data_mvv/
+MVV/Phase_1_1/exp2_maxpool_comparison/data/
 
 # Eval results
 eval_results*.json
