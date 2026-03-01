@@ -1,0 +1,143 @@
+{
+  "mean-pool": {
+    "dim": 1152,
+    "random_base": 0.066667,
+    "repos": [
+      "black",
+      "click",
+      "cpython",
+      "django",
+      "fastapi",
+      "flask",
+      "httpx",
+      "numpy",
+      "pandas",
+      "poetry",
+      "pydantic",
+      "pytorch",
+      "requests",
+      "scikit-learn",
+      "transformers"
+    ],
+    "budgets": {
+      "729": {
+        "top1_acc": 0.763474,
+        "top3_acc": 0.895434,
+        "lift_top1": 11.45,
+        "lift_top3": 4.48
+      },
+      "441": {
+        "top1_acc": 0.726392,
+        "top3_acc": 0.880958,
+        "lift_top1": 10.9,
+        "lift_top3": 4.4
+      },
+      "256": {
+        "top1_acc": 0.614588,
+        "top3_acc": 0.832962,
+        "lift_top1": 9.22,
+        "lift_top3": 4.16
+      },
+      "121": {
+        "top1_acc": 0.280846,
+        "top3_acc": 0.504009,
+        "lift_top1": 4.21,
+        "lift_top3": 2.52
+      }
+    }
+  },
+  "pool 4\u00d74": {
+    "dim": 18432,
+    "random_base": 0.066667,
+    "repos": [
+      "black",
+      "click",
+      "cpython",
+      "django",
+      "fastapi",
+      "flask",
+      "httpx",
+      "numpy",
+      "pandas",
+      "poetry",
+      "pydantic",
+      "pytorch",
+      "requests",
+      "scikit-learn",
+      "transformers"
+    ],
+    "budgets": {
+      "729": {
+        "top1_acc": 0.661247,
+        "top3_acc": 0.839755,
+        "lift_top1": 9.92,
+        "lift_top3": 4.2
+      },
+      "441": {
+        "top1_acc": 0.625056,
+        "top3_acc": 0.801448,
+        "lift_top1": 9.38,
+        "lift_top3": 4.01
+      },
+      "256": {
+        "top1_acc": 0.579621,
+        "top3_acc": 0.762918,
+        "lift_top1": 8.69,
+        "lift_top3": 3.81
+      },
+      "121": {
+        "top1_acc": 0.318931,
+        "top3_acc": 0.633073,
+        "lift_top1": 4.78,
+        "lift_top3": 3.17
+      }
+    }
+  },
+  "pool 8\u00d78": {
+    "dim": 73728,
+    "random_base": 0.066667,
+    "repos": [
+      "black",
+      "click",
+      "cpython",
+      "django",
+      "fastapi",
+      "flask",
+      "httpx",
+      "numpy",
+      "pandas",
+      "poetry",
+      "pydantic",
+      "pytorch",
+      "requests",
+      "scikit-learn",
+      "transformers"
+    ],
+    "budgets": {
+      "729": {
+        "top1_acc": 0.698107,
+        "top3_acc": 0.86069,
+        "lift_top1": 10.47,
+        "lift_top3": 4.3
+      },
+      "441": {
+        "top1_acc": 0.656904,
+        "top3_acc": 0.837751,
+        "lift_top1": 9.85,
+        "lift_top3": 4.19
+      },
+      "256": {
+        "top1_acc": 0.624053,
+        "top3_acc": 0.787194,
+        "lift_top1": 9.36,
+        "lift_top3": 3.94
+      },
+      "121": {
+        "top1_acc": 0.359688,
+        "top3_acc": 0.666481,
+        "lift_top1": 5.4,
+        "lift_top3": 3.33
+      }
+    }
+  }
+}
