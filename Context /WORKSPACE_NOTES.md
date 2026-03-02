@@ -275,9 +275,9 @@ A three-phase hybrid workflow combining vision and text:
 ## Next Actions
 
 1. **✅ DONE (2026-03-01 session 6):** MVV Phase 1.2 — both experiments complete
-   - **Exp1 (mean-pool, full-file labels, LinearRegression):** null result — best R²=0.518. Two bugs: (a) full-file labels vs 40-line image; (b) mean pooling destroys spatial information
-   - **Exp2 (pool4x4/pool8x8, windowed labels, PCA 1024 + Ridge alpha=100):** line_count R²=0.87@256 (PASS); n_classes R²=0.67@256 (partial); n_defs R²=0.46@256 (FAIL). pool4x4 beats pool8x8 for n_defs at low res (coarser pooling more robust).
-   - **Key finding:** Coarse line density survives 256-token compression; fine-grained function boundaries do not.
+   - **Exp1 (mean-pool, windowed labels, LinearRegression):** line_count R²=0.855@256 (PASS); n_defs=0.364 (FAIL); n_classes=0.568 (FAIL). Clean ablation: mean pooling is the architectural bottleneck independent of label correctness.
+   - **Exp2 (pool4x4/pool8x8, windowed labels, PCA 1024 + Ridge alpha=100):** line_count R²=0.867@256 (PASS); n_defs=0.461 (FAIL); n_classes=0.675 (partial). pool4x4 beats pool8x8 for n_defs at low res. Spatial pooling adds ~+0.10 R² over mean-pool on structural targets.
+   - **Key finding:** Coarse line density survives 256-token compression regardless of pooling; fine-grained function boundaries do not survive in either architecture.
    - **Key files:** `exp1_structural_regression/results/regression_results.json`, `exp2_spatial_regression/results/regression_results.json`
    - **Next:** Phase 1.2 Exp3 — nonlinear probe (MLP or k-NN) on PCA(pool4x4) features @ 256 tokens to test if n_defs is nonlinearly encoded
 

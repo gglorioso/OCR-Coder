@@ -10,8 +10,8 @@
 **Current Phase:** Phase 3 — MVV Phase 1.2 complete (exp1 + exp2 done); Phase 1.2 Exp3 TBD
 **Last Updated:** 2026-03-01 (session 6)
 
-- ✅ **Phase 1.2 Exp1 (mean-pool, full-file labels, LinearRegression) DONE** — null result: best R²=0.518 at train budget. Root causes: mean pooling destroys spatial info; full-file labels impossible (image shows 40 lines, labels reflect 40k lines)
-- ✅ **Phase 1.2 Exp2 (pool4x4/pool8x8, windowed labels, PCA+Ridge) DONE** — line_count R²=0.87 @ 256 tokens (PASS); n_classes R²=0.67 (partial); n_defs R²=0.46 (FAIL). Spatial geometry survives for coarse density but not fine-grained function counting.
+- ✅ **Phase 1.2 Exp1 (mean-pool, windowed labels, LinearRegression) DONE** — line_count R²=0.855@256 (PASS); n_defs=0.364 (FAIL); n_classes=0.568 (FAIL). Clean ablation: mean pooling is the bottleneck for structural counting independent of labels.
+- ✅ **Phase 1.2 Exp2 (pool4x4/pool8x8, windowed labels, PCA+Ridge) DONE** — line_count R²=0.867@256 (PASS); n_defs=0.461 (FAIL); n_classes=0.675 (partial). Spatial pooling lifts n_defs +0.10 and n_classes +0.11 over mean-pool at 256 tokens.
 - ✅ **Phase_1_2/ created** — `exp1_structural_regression/`, `exp2_spatial_regression/` each with scripts+data+results
 - ⚠️ **Contrastive track (phase2b_v7) and Qwen status unknown** — check job logs
 

@@ -11,44 +11,44 @@
   "success_threshold_r2": 0.8,
   "results": {
     "budget_729": {
-      "line_count": 0.485355,
-      "n_defs": 0.517632,
-      "n_classes": 0.435693
+      "line_count": 0.970358,
+      "n_defs": 0.832587,
+      "n_classes": 0.855273
     },
     "budget_441": {
-      "line_count": 0.323663,
-      "n_defs": 0.330563,
-      "n_classes": 0.288047
+      "line_count": 0.921178,
+      "n_defs": 0.719751,
+      "n_classes": 0.772532
     },
     "budget_256": {
-      "line_count": 0.084551,
-      "n_defs": 0.169295,
-      "n_classes": 0.032495
+      "line_count": 0.85532,
+      "n_defs": 0.363693,
+      "n_classes": 0.568271
     },
     "budget_121": {
-      "line_count": -0.692428,
-      "n_defs": -1.272205,
-      "n_classes": -2.824298
+      "line_count": 0.040905,
+      "n_defs": -0.479119,
+      "n_classes": -0.405366
     }
   },
   "target_stats": {
     "line_count": {
-      "mean": 432.12,
-      "std": 954.86,
-      "min": 10,
-      "max": 41440
+      "mean": 36.67,
+      "std": 8.03,
+      "min": 1,
+      "max": 40
     },
     "n_defs": {
-      "mean": 15.3,
-      "std": 29.58,
+      "mean": 1.33,
+      "std": 1.56,
       "min": 0,
-      "max": 751
+      "max": 19
     },
     "n_classes": {
-      "mean": 3.46,
-      "std": 8.03,
+      "mean": 0.76,
+      "std": 1.16,
       "min": 0,
-      "max": 261
+      "max": 12
     }
   }
 }

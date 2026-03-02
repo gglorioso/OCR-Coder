@@ -8,20 +8,23 @@ Can a linear probe count functions and classes from geometry alone?
 
 ## Experiments
 
-### Exp1 — Mean-Pool, Full-File Labels, LinearRegression
+### Exp1 — Mean-Pool, Windowed Labels, LinearRegression
 
-**Status: ✅ DONE — Null result (instructive failure)**
+**Status: ✅ DONE — Clean ablation isolating mean pooling as bottleneck**
+
+Labels correctly windowed to the visible 40-line AST window (same labels as Exp2).
+Only variable vs Exp2: **mean-pool features** instead of spatial max-pool.
 
 | Budget | line_count R² | n_defs R² | n_classes R² |
 |--------|:---:|:---:|:---:|
-| 729 (train) | 0.485 | 0.518 | 0.436 |
-| 441 | 0.324 | 0.331 | 0.288 |
-| 256 | 0.085 | 0.169 | 0.032 |
-| 121 | −0.69 | −1.27 | −2.82 |
+| 729 (train) | 0.970 | 0.833 | 0.855 |
+| 441 | 0.921 | 0.720 | 0.773 |
+| **256** | **0.855** | **0.364** | **0.568** |
+| 121 | 0.041 | −0.479 | −0.405 |
 
-**Root causes of failure:**
-1. **Label misalignment:** `gen_labels.py` counted the entire file. A 40,000-line file shows only 40 lines in the image — the probe was asked to predict invisible structure.
-2. **Mean pooling destroys spatial info:** Averaging 729 patch tokens into one 1152D vector removes all spatial coordinates. Counting structural boundaries requires knowing *where* things are.
+**Finding:** Mean pooling is the architectural bottleneck — even with correct windowed labels,
+n_defs and n_classes fail at 256 tokens. Fixing the labels alone is insufficient;
+the feature representation must preserve spatial structure.
 
 **Key files:** [exp1_structural_regression/results/regression_results.json](exp1_structural_regression/results/regression_results.json)
 
