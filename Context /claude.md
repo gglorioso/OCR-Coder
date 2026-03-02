@@ -7,16 +7,16 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — MVV Phase 1.1 complete (exp1 + exp2 done); Phase 1.2 TBD
-**Last Updated:** 2026-03-01 (session 5)
+**Current Phase:** Phase 3 — MVV Phase 1.2 complete (exp1 + exp2 done); Phase 1.2 Exp3 TBD
+**Last Updated:** 2026-03-01 (session 6)
 
-- ✅ **Exp1 (mean-pool probe) DONE** — per-file: null result (cos sim=0.94, features collapsed); repo-level: 76.3%@729→28.1%@121, knee at 256→121
-- ✅ **Exp2 (adaptive max-pool) DONE** — 8×8 beats mean-pool below 256 tokens (36.0% vs 28.1%@121); mean-pool wins at 729 (76.3% vs 69.8%)
-- ✅ **Phase_1_1/ reorganized** — `shared/`, `exp1_meanpool_probe/`, `exp2_maxpool_comparison/` with scripts+data+results per experiment
+- ✅ **Phase 1.2 Exp1 (mean-pool, full-file labels, LinearRegression) DONE** — null result: best R²=0.518 at train budget. Root causes: mean pooling destroys spatial info; full-file labels impossible (image shows 40 lines, labels reflect 40k lines)
+- ✅ **Phase 1.2 Exp2 (pool4x4/pool8x8, windowed labels, PCA+Ridge) DONE** — line_count R²=0.87 @ 256 tokens (PASS); n_classes R²=0.67 (partial); n_defs R²=0.46 (FAIL). Spatial geometry survives for coarse density but not fine-grained function counting.
+- ✅ **Phase_1_2/ created** — `exp1_structural_regression/`, `exp2_spatial_regression/` each with scripts+data+results
 - ⚠️ **Contrastive track (phase2b_v7) and Qwen status unknown** — check job logs
 
-**Current Step: Decide Phase 1.2 experiment direction**
-1. **Options:** (a) patch-token NN retrieval instead of LogReg probe, (b) syntax-highlighted colour images, (c) balanced repo sampling
+**Current Step: Phase 1.2 Exp3 — nonlinear probe on n_defs @ 256 tokens**
+1. **Test:** MLP or k-NN on PCA(pool4x4) features at 256 tokens — is n_defs information nonlinearly encoded?
 2. **Check phase2b_v7 / Qwen job status** — may need resubmission
 
 ---

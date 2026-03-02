@@ -274,12 +274,18 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
+1. **✅ DONE (2026-03-01 session 6):** MVV Phase 1.2 — both experiments complete
+   - **Exp1 (mean-pool, full-file labels, LinearRegression):** null result — best R²=0.518. Two bugs: (a) full-file labels vs 40-line image; (b) mean pooling destroys spatial information
+   - **Exp2 (pool4x4/pool8x8, windowed labels, PCA 1024 + Ridge alpha=100):** line_count R²=0.87@256 (PASS); n_classes R²=0.67@256 (partial); n_defs R²=0.46@256 (FAIL). pool4x4 beats pool8x8 for n_defs at low res (coarser pooling more robust).
+   - **Key finding:** Coarse line density survives 256-token compression; fine-grained function boundaries do not.
+   - **Key files:** `exp1_structural_regression/results/regression_results.json`, `exp2_spatial_regression/results/regression_results.json`
+   - **Next:** Phase 1.2 Exp3 — nonlinear probe (MLP or k-NN) on PCA(pool4x4) features @ 256 tokens to test if n_defs is nonlinearly encoded
+
 1. **✅ DONE (2026-03-01 session 5):** MVV Phase 1.1 — both experiments complete
    - **Exp1 (mean-pool):** per-file probe null (cos sim=0.94); repo probe 76.3%@729→28.1%@121; knee at 256→121 tokens
    - **Exp2 (adaptive max-pool):** 8×8 beats mean-pool below 256 tokens (36%@121 vs 28.1%); mean-pool wins at high res; crossover ~256 tokens
    - **Reorganized:** `Phase_1_1/` → `shared/`, `exp1_meanpool_probe/{scripts,data,results}`, `exp2_maxpool_comparison/{scripts,data,results}`
    - **Key files:** `exp1_meanpool_probe/results/repo_probe_results.json`, `exp2_maxpool_comparison/results/maxpool_repo_results.json`, `maxpool_comparison.png`
-   - **Next:** Decide Phase 1.2 direction — options: (a) NN retrieval instead of LogReg, (b) colour/syntax-highlighted images, (c) balanced repo sampling
 
 2. **❌ IN PROGRESS (2026-02-27 session 3):** Both jobs failing — phase2b_v7 (227552) and Qwen (227553)
    - **All fixes applied this session:**

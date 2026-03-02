@@ -1,0 +1,54 @@
+{
+  "probe": "structural_regression",
+  "train_budget": 729,
+  "n_train": 8938,
+  "feature_dim": 1152,
+  "targets": [
+    "line_count",
+    "n_defs",
+    "n_classes"
+  ],
+  "success_threshold_r2": 0.8,
+  "results": {
+    "budget_729": {
+      "line_count": 0.485355,
+      "n_defs": 0.517632,
+      "n_classes": 0.435693
+    },
+    "budget_441": {
+      "line_count": 0.323663,
+      "n_defs": 0.330563,
+      "n_classes": 0.288047
+    },
+    "budget_256": {
+      "line_count": 0.084551,
+      "n_defs": 0.169295,
+      "n_classes": 0.032495
+    },
+    "budget_121": {
+      "line_count": -0.692428,
+      "n_defs": -1.272205,
+      "n_classes": -2.824298
+    }
+  },
+  "target_stats": {
+    "line_count": {
+      "mean": 432.12,
+      "std": 954.86,
+      "min": 10,
+      "max": 41440
+    },
+    "n_defs": {
+      "mean": 15.3,
+      "std": 29.58,
+      "min": 0,
+      "max": 751
+    },
+    "n_classes": {
+      "mean": 3.46,
+      "std": 8.03,
+      "min": 0,
+      "max": 261
+    }
+  }
+}

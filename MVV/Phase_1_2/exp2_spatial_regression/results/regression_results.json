@@ -1,0 +1,116 @@
+{
+  "probe": "spatial_regression_pca_ridge",
+  "train_budget": 729,
+  "n_components": 1024,
+  "ridge_alpha": 100.0,
+  "success_threshold": 0.8,
+  "targets": [
+    "line_count",
+    "n_defs",
+    "n_classes"
+  ],
+  "pool_sizes": [
+    "pool4x4",
+    "pool8x8"
+  ],
+  "pools": {
+    "pool4x4": {
+      "pca_n_components": 1024,
+      "pca_variance_explained": 0.568447,
+      "ridge_alpha": 100.0,
+      "n_train": 8938,
+      "feature_dim": 18432,
+      "results": {
+        "budget_729": {
+          "line_count": 0.973039,
+          "n_defs": 0.851483,
+          "n_classes": 0.862008
+        },
+        "budget_441": {
+          "line_count": 0.908921,
+          "n_defs": 0.758337,
+          "n_classes": 0.783537
+        },
+        "budget_256": {
+          "line_count": 0.866518,
+          "n_defs": 0.461288,
+          "n_classes": 0.674684
+        },
+        "budget_121": {
+          "line_count": 0.559213,
+          "n_defs": -0.137621,
+          "n_classes": 0.109977
+        }
+      },
+      "target_stats": {
+        "line_count": {
+          "mean": 36.668,
+          "std": 8.03,
+          "min": 1,
+          "max": 40
+        },
+        "n_defs": {
+          "mean": 1.325,
+          "std": 1.559,
+          "min": 0,
+          "max": 19
+        },
+        "n_classes": {
+          "mean": 0.764,
+          "std": 1.156,
+          "min": 0,
+          "max": 12
+        }
+      }
+    },
+    "pool8x8": {
+      "pca_n_components": 1024,
+      "pca_variance_explained": 0.514996,
+      "ridge_alpha": 100.0,
+      "n_train": 8938,
+      "feature_dim": 73728,
+      "results": {
+        "budget_729": {
+          "line_count": 0.980413,
+          "n_defs": 0.865501,
+          "n_classes": 0.888423
+        },
+        "budget_441": {
+          "line_count": 0.892182,
+          "n_defs": 0.770651,
+          "n_classes": 0.816391
+        },
+        "budget_256": {
+          "line_count": 0.87707,
+          "n_defs": 0.370766,
+          "n_classes": 0.669682
+        },
+        "budget_121": {
+          "line_count": 0.660541,
+          "n_defs": -0.325092,
+          "n_classes": 0.081089
+        }
+      },
+      "target_stats": {
+        "line_count": {
+          "mean": 36.668,
+          "std": 8.03,
+          "min": 1,
+          "max": 40
+        },
+        "n_defs": {
+          "mean": 1.325,
+          "std": 1.559,
+          "min": 0,
+          "max": 19
+        },
+        "n_classes": {
+          "mean": 0.764,
+          "std": 1.156,
+          "min": 0,
+          "max": 12
+        }
+      }
+    }
+  }
+}
