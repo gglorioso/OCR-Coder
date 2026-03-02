@@ -38,6 +38,7 @@ import hashlib
 import json
 import random
 import sys
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -290,6 +291,96 @@ def repo_level_split(files: List[Dict], seed: int = 42) -> Dict[str, str]:
     return split_map
 
 
+# ── Parallel worker ────────────────────────────────────────────────────────────
+
+def process_file(job: Tuple) -> Tuple[List, int, int, int]:
+    """
+    Worker: render all styles × all chunks for one file.
+    Returns (examples, n_rendered, n_skipped, n_failed).
+    Called by Pool.imap_unordered — must be a top-level function.
+    """
+    f, styles, images_dir_str, chunk_size, split = job
+    images_dir = Path(images_dir_str)
+
+    source = f["source"]
+    chunks = chunk_source(source, chunk_size)
+    n_chunks = len(chunks)
+    n_rendered = n_skipped = n_failed = 0
+    examples: List[Dict] = []
+
+    # Pre-compute AST labels once per chunk (same across all styles)
+    chunk_labels = []
+    for chunk_idx, (start_line, end_line, _chunk_code) in enumerate(chunks):
+        if (end_line - start_line + 1) < MIN_CHUNK_LINES:
+            chunk_labels.append(None)
+            continue
+        chunk_labels.append(extract_chunk_labels(source, start_line, end_line))
+
+    for style in styles:
+        for chunk_idx, (start_line, end_line, chunk_code) in enumerate(chunks):
+            if (end_line - start_line + 1) < MIN_CHUNK_LINES:
+                continue
+            labels = chunk_labels[chunk_idx]
+            if not labels:
+                continue
+
+            stem = make_stem(f["repo"], f["rel_path"], chunk_idx, n_chunks, style)
+            img_path = images_dir / f"{stem}.png"
+
+            if img_path.exists():
+                n_skipped += 1
+                img_abs = str(img_path.resolve())
+            else:
+                try:
+                    img_abs = convert_string_to_image(
+                        code_str=chunk_code,
+                        out_path=str(img_path),
+                        style=style,
+                        font_size=FONT_SIZE,
+                    )
+                    n_rendered += 1
+                except Exception as e:
+                    print(
+                        f"    WARN render failed {f['repo']}/{f['rel_path']} "
+                        f"c{chunk_idx} style={style}: {e}",
+                        flush=True,
+                    )
+                    n_failed += 1
+                    continue
+
+            rel_stem = Path(f["rel_path"]).stem
+            for label in labels:
+                ex_id = f"{f['repo']}__{rel_stem}"
+                if n_chunks > 1:
+                    ex_id += f"_c{chunk_idx}"
+                ex_id += f"_{style}__{label['task']}"
+
+                examples.append({
+                    "id": ex_id,
+                    "image": img_abs,
+                    "repo": f["repo"],
+                    "source_file": f["rel_path"],
+                    "style": style,
+                    "chunk_idx": chunk_idx,
+                    "start_line": start_line,
+                    "end_line": end_line,
+                    "task_type": label["task"],
+                    "conversations": [
+                        {
+                            "role": "user",
+                            "content": f"<img_start><image><img_end>\n{label['question']}",
+                        },
+                        {
+                            "role": "assistant",
+                            "content": label["answer"],
+                        },
+                    ],
+                    "_split": split,
+                })
+
+    return examples, n_rendered, n_skipped, n_failed
+
+
 # ── Main Pipeline ──────────────────────────────────────────────────────────────
 
 def main():
@@ -309,6 +400,9 @@ def main():
                              "Each chunk is rendered once per style. "
                              "Example: --styles monokai dracula github-dark solarized-dark vs friendly")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--n-workers", type=int, default=1,
+                        help="Number of parallel render workers (default 1). "
+                             "Set to $SLURM_CPUS_PER_TASK for full node utilization.")
     args = parser.parse_args()
 
     repos_dir = Path(args.repos_dir)
@@ -341,93 +435,45 @@ def main():
     print("=" * 60)
 
     styles = args.styles
-    print(f"  Rendering {len(styles)} style(s): {styles}\n")
+    n_workers = max(1, args.n_workers)
+    print(f"  Rendering {len(styles)} style(s): {styles}")
+    print(f"  Workers: {n_workers}\n")
 
     split_examples: Dict[str, List[Dict]] = {"train": [], "val": [], "test": []}
     n_rendered = n_skipped = n_failed = n_examples = 0
 
-    for file_idx, f in enumerate(files):
+    # Build one job per file; each worker handles all styles × chunks for that file
+    jobs = [
+        (f, styles, str(images_dir), args.chunk_size, split_map[f["repo"]])
+        for f in files
+    ]
+
+    def _collect(result_batch, file_idx):
+        nonlocal n_rendered, n_skipped, n_failed, n_examples
+        examples, nr, ns, nf = result_batch
+        n_rendered += nr
+        n_skipped  += ns
+        n_failed   += nf
+        for ex in examples:
+            split = ex.pop("_split")
+            split_examples[split].append(ex)
+            n_examples += 1
         if file_idx % 500 == 0:
             print(
                 f"  [{file_idx}/{len(files)}] rendered={n_rendered} "
-                f"skipped={n_skipped} examples={n_examples}"
+                f"skipped={n_skipped} examples={n_examples}",
+                flush=True,
             )
 
-        source = f["source"]
-        chunks = chunk_source(source, args.chunk_size)
-        n_chunks = len(chunks)
-        split = split_map[f["repo"]]
-
-        # Pre-compute AST labels once per chunk (same for all styles)
-        chunk_labels = []
-        for chunk_idx, (start_line, end_line, chunk_code) in enumerate(chunks):
-            if (end_line - start_line + 1) < MIN_CHUNK_LINES:
-                chunk_labels.append(None)
-                continue
-            chunk_labels.append(extract_chunk_labels(source, start_line, end_line))
-
-        for style in styles:
-            for chunk_idx, (start_line, end_line, chunk_code) in enumerate(chunks):
-                if (end_line - start_line + 1) < MIN_CHUNK_LINES:
-                    continue
-
-                labels = chunk_labels[chunk_idx]
-                if not labels:
-                    continue
-
-                stem = make_stem(f["repo"], f["rel_path"], chunk_idx, n_chunks, style)
-                img_path = images_dir / f"{stem}.png"
-
-                # Skip if image already rendered (idempotent reruns)
-                if img_path.exists():
-                    n_skipped += 1
-                    img_abs = str(img_path.resolve())
-                else:
-                    try:
-                        img_abs = convert_string_to_image(
-                            code_str=chunk_code,
-                            out_path=str(img_path),
-                            style=style,
-                            font_size=FONT_SIZE,
-                        )
-                        n_rendered += 1
-                    except Exception as e:
-                        print(
-                            f"    WARN render failed {f['repo']}/{f['rel_path']} "
-                            f"c{chunk_idx} style={style}: {e}"
-                        )
-                        n_failed += 1
-                        continue
-
-                rel_stem = Path(f["rel_path"]).stem
-                for label in labels:
-                    ex_id = f"{f['repo']}__{rel_stem}"
-                    if n_chunks > 1:
-                        ex_id += f"_c{chunk_idx}"
-                    ex_id += f"_{style}__{label['task']}"
-
-                    split_examples[split].append({
-                        "id": ex_id,
-                        "image": img_abs,
-                        "repo": f["repo"],
-                        "source_file": f["rel_path"],
-                        "style": style,
-                        "chunk_idx": chunk_idx,
-                        "start_line": start_line,
-                        "end_line": end_line,
-                        "task_type": label["task"],
-                        "conversations": [
-                            {
-                                "role": "user",
-                                "content": f"<img_start><image><img_end>\n{label['question']}",
-                            },
-                            {
-                                "role": "assistant",
-                                "content": label["answer"],
-                            },
-                        ],
-                    })
-                    n_examples += 1
+    if n_workers == 1:
+        for file_idx, job in enumerate(jobs):
+            _collect(process_file(job), file_idx)
+    else:
+        with Pool(processes=n_workers) as pool:
+            for file_idx, result in enumerate(
+                pool.imap_unordered(process_file, jobs, chunksize=4)
+            ):
+                _collect(result, file_idx)
 
     # ── Step 4: Write manifests ────────────────────────────────────────────────
     print("\n" + "=" * 60)

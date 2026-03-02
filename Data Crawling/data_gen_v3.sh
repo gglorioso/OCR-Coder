@@ -1,24 +1,24 @@
 #!/bin/bash
-#SBATCH --job-name=data-gen-2b
+#SBATCH --job-name=data-gen-v3
 #SBATCH --partition=teaching
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=32G
-#SBATCH --time=08:00:00
-#SBATCH --output=slurm-data-gen-2b-%j.out
-#SBATCH --error=slurm-data-gen-2b-%j.err
+#SBATCH --mem=48G
+#SBATCH --time=04:00:00
+#SBATCH --output=slurm-data-gen-v3-%j.out
+#SBATCH --error=slurm-data-gen-v3-%j.err
 
-# Phase 2b Data Generation — CPU-only image rendering + manifest generation
+# Phase v3 Multi-Style Data Generation
 #
-# Processes ALL valid Python files from Scraped Repos:
-#   - Chunks files into 200-line segments (≥6.5px/char at 2048 tokens)
-#   - Renders new monokai PNGs to data_v2b/images/
-#   - Generates 6 AST label types per chunk
-#   - Repo-level 90/5/5 split → manifests in data_v2b/manifests/
+# Renders 8 colour themes for every code chunk:
+#   monokai dracula one-dark github-dark nord default friendly vs
 #
-# After this job: sbatch coder_vl/precompute_2b.sh
+# ~8× more images than v2b (~77k images) using 16 parallel workers.
+# Estimated wall time: ~2h (vs ~16h single-threaded).
+#
+# After this job: update precompute script to point at data_v3, then sbatch.
 
 echo "========================================"
-echo "Phase 2b Data Generation"
+echo "Phase v3 Multi-Style Data Generation"
 echo "========================================"
 echo "Job ID:  $SLURM_JOB_ID"
 echo "Node:    $SLURM_NODELIST"
@@ -28,21 +28,22 @@ echo ""
 
 PYTHON="$HOME/DS OCR/envs/deepseek-ocr/bin/python"
 REPOS_DIR="$HOME/CoderOCR/OCR-Coder/Scraped Repos"
-OUTPUT_DIR="$HOME/CoderOCR/OCR-Coder/data_v2b"
+OUTPUT_DIR="$HOME/CoderOCR/OCR-Coder/data_v3"
 FEATURES_DIR="$HOME/CoderOCR/OCR-Coder/precomputed_features_tiled"
 
 echo "Repos:    $REPOS_DIR"
 echo "Output:   $OUTPUT_DIR"
-echo "Features: $FEATURES_DIR"
+echo "Workers:  $SLURM_CPUS_PER_TASK"
 echo ""
 
 "$PYTHON" "$HOME/CoderOCR/OCR-Coder/Data Crawling/data_gen_2b.py" \
-    --repos-dir   "$REPOS_DIR" \
-    --output-dir  "$OUTPUT_DIR" \
+    --repos-dir    "$REPOS_DIR" \
+    --output-dir   "$OUTPUT_DIR" \
     --features-dir "$FEATURES_DIR" \
-    --chunk-size  200 \
-    --n-workers   12 \
-    --seed        42
+    --chunk-size   500 \
+    --seed         42 \
+    --n-workers    "$SLURM_CPUS_PER_TASK" \
+    --styles monokai dracula one-dark github-dark nord default friendly vs
 
 EXIT_CODE=$?
 
@@ -58,8 +59,6 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo "Train examples:  $(wc -l < "$OUTPUT_DIR/manifests/train.jsonl" 2>/dev/null)"
     echo "Val examples:    $(wc -l < "$OUTPUT_DIR/manifests/val.jsonl" 2>/dev/null)"
     echo "Test examples:   $(wc -l < "$OUTPUT_DIR/manifests/test.jsonl" 2>/dev/null)"
-    echo ""
-    echo "Next: sbatch coder_vl/precompute_2b.sh"
 fi
 
 exit $EXIT_CODE
