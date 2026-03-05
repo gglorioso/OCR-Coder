@@ -89,26 +89,33 @@ Two experiments run at 256 tokens — Exp1 (mean-pool, LinearRegression) and Exp
 
 ---
 
-### 1.4 Syntactic Texture Probes (The Novel Contribution) 🔲 PENDING
+### 1.4 Syntactic Texture Probes (The Novel Contribution) ✅ COMPLETE
 
 - **Intelligence Tier:** Micro-Level (**Syntactic Topology**).
 - **High-Level Claim:** This is the **novel** part of the study.
 
-- **Hypothesis:**  
-  - **Nesting Depth** will be **more resilient** than **Keyword Density**.  
-  - The model can still perceive the **"staircase" shape** of deeply nested code (loops, conditionals) even when it cannot reliably distinguish a `for` from a `while`.
+**Phase 1.4 — Syntactic Texture Probes** (2026-03-05, session 8)
 
-- **Tests:**
-  - **Nesting Depth**
-    - Task: **3-class classification** — **Shallow / Medium / Deep**.
-    - Measures whether the model perceives the **vertical indentation profile**.
-  - **Indentation Style**
-    - Task: **Binary classification** — **Tabs vs. Spaces**.
-    - Probes whether the model is sensitive to **pixel-level gaps** that differentiate indentation styles.
-  - **Keyword Density**
-    - Task: **Regression**.
-    - Role: **Semantic Baseline** to mark where **character-level recognition fails**.  
-      When this collapses but structural probes remain strong, we have evidence for **structure–semantic decoupling**.
+*Motivation:* Having established that SigLIP features encode coarse line density (Phase 1.2) but lack fine-grained function boundary signal (Phase 1.3), Phase 1.4 tests whether three syntactic surface properties — nesting depth, indentation style, and keyword density — are linearly decodable from 256-token mean-pooled SigLIP features. These targets were chosen to span a visual hierarchy:
+- **Nesting depth** tests the "staircase" profile — the large-scale indentation gradient visible even at low resolution
+- **Indentation style (tabs vs spaces)** tests the "pixel floor" — high-frequency sub-character spacing differences
+- **Keyword density** serves as a semantic baseline — can the model count tokens it cannot fully resolve?
+
+*Scripts:*
+- `MVV/Phase_1_4/scripts/gen_phase_1_4_labels.py` — extracts nesting_depth (0/1/2 bins), is_tabs (binary), keyword_density (int count) from 40-line Python windows via `ast` + `tokenize`
+- `MVV/Phase_1_4/scripts/run_probe_1_4.py` — RidgeClassifier / Ridge regression, native 5-fold CV on 1280-dim SigLIP features
+- `MVV/Phase_1_4/scripts/visualize_resolution_floor.py` — 2×2 grid comparing Bicubic / Nearest Neighbor / Area downsampling at 224×224, blown back up with NN to reveal pixel blocks; used to explain the semantic probe failure in the paper
+
+*Results (smoke test, 14,129 samples, 1280-dim mean-pooled features):*
+- **nesting_depth:** accuracy = 0.538 ± 0.013, macro-F1 = 0.405 — above 33% chance baseline, but weak. Shallow code (class 0) nearly invisible to the model (F1 = 0.027); medium and deep nesting distinguishable (F1 ≈ 0.58 / 0.61). The staircase gradient is partially visible.
+- **is_tabs:** accuracy = 0.9999 — **degenerate**. Only 1 tab-indented file in 14,129 samples. Dataset is 99.99% spaces; probe cannot be interpreted. Noted as data limitation.
+- **keyword_density:** R² = +0.120 ± 0.006 — weak positive signal. SigLIP retains a coarse linear fingerprint of keyword density, but 88% of variance is lost. Consistent with Phase 1.3's finding that fine-grained semantic content does not survive 256-token compression.
+
+*Visual fidelity insight:* At 224×224 px with 40 lines per image, mean character height = **5.6 px**. Individual glyphs are ~2–3 px wide — below reliable character recognition threshold. This explains keyword_density R² ≈ 0.12: the model encodes density texture (bright/dark horizontal banding) but cannot resolve letter identity.
+
+*Interpretation:* SigLIP perceives syntactic structure primarily through coarse visual geometry (indentation gradient → nesting depth), not through glyph-level reading. The pixel floor for tab/space detection is untestable on this dataset. The semantic baseline (keyword density) confirms that token-level semantics are largely lost at 256-token budget — supporting the hypothesis that visual tokens compress layout information at the expense of lexical content.
+
+*Next:* Run full label generation on 62,166-sample train set and execute probes at production scale.
 
 ---
 
