@@ -7,17 +7,14 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — MVV Phase 1.2 complete (exp1 + exp2 done); Phase 1.2 Exp3 TBD
-**Last Updated:** 2026-03-01 (session 6)
+**Current Phase:** Phase 3 — MVV Phase 1.3 complete (probe + domain shift analysis); Phase 1.4 syntactic texture next
+**Last Updated:** 2026-03-04 (session 7)
 
-- ✅ **Phase 1.2 Exp1 (mean-pool, windowed labels, LinearRegression) DONE** — line_count R²=0.855@256 (PASS); n_defs=0.364 (FAIL); n_classes=0.568 (FAIL). Clean ablation: mean pooling is the bottleneck for structural counting independent of labels.
-- ✅ **Phase 1.2 Exp2 (pool4x4/pool8x8, windowed labels, PCA+Ridge) DONE** — line_count R²=0.867@256 (PASS); n_defs=0.461 (FAIL); n_classes=0.675 (partial). Spatial pooling lifts n_defs +0.10 and n_classes +0.11 over mean-pool at 256 tokens.
-- ✅ **Phase_1_2/ created** — `exp1_structural_regression/`, `exp2_spatial_regression/` each with scripts+data+results
-- ⚠️ **Contrastive track (phase2b_v7) and Qwen status unknown** — check job logs
+- ✅ **Phase 1.3 nonlinear probe DONE** — Ridge native CV n_defs=0.672, n_classes=0.780; RF fails to beat Ridge → signal genuinely weak at 256 tokens
+- ✅ **Domain shift script written** — smoke test confirms DOMAIN SHIFT (cos sim=0.220, CKA=0.47); full run pending
+- ⚠️ **Contrastive track (phase2b_v7) and Qwen status still unknown** — check job logs
 
-**Current Step: Phase 1.2 Exp3 — nonlinear probe on n_defs @ 256 tokens**
-1. **Test:** MLP or k-NN on PCA(pool4x4) features at 256 tokens — is n_defs information nonlinearly encoded?
-2. **Check phase2b_v7 / Qwen job status** — may need resubmission
+**Current Step:** Phase 1.4 — Syntactic Texture Probes (nesting depth, indentation style, keyword density)
 
 ---
 
@@ -41,6 +38,22 @@ Code Image → SigLIP Vision Encoder (1280D) → Projection Adapter (1280D→204
 - Visual tokens **capped at 1,120** (256 base + 6×144 patches)
 - Compression ratios: 3.30x (medium files) to **20.16x** (large files)
 - Small files (<100 lines) don't benefit (expected)
+
+### Subagent Workflow (Context Management)
+
+To prevent context window overflow, follow these rules each session:
+
+| Task | Tool |
+|---|---|
+| Explore unfamiliar file structure | `Explore` agent (not direct Read) |
+| Write scripts >100 lines | `general-purpose` agent (returns confirmation only) |
+| Analyze results JSON | `general-purpose` agent (returns bullet summary only) |
+| Read a specific small known file | Direct `Read` (fine) |
+| Targeted search | Direct `Grep`/`Glob` (fine) |
+
+- **Never re-read files already analyzed earlier in the same session**
+- **End of session:** run `/pass` to create handoff note
+- **Start of session:** run `/prime` to bootstrap from essential sections only
 
 ---
 

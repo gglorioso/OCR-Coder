@@ -1,0 +1,122 @@
+{
+  "analysis": "geometric_domain_shift",
+  "pool": "pool4x4",
+  "n_total": 8938,
+  "feature_dim_raw": 18432,
+  "pca": {
+    "n_components": 1024,
+    "variance_explained": 0.568448
+  },
+  "metric1_cosine_similarity": {
+    "mean": 0.29182928800582886,
+    "std": 0.07441233843564987,
+    "median": 0.2976583242416382,
+    "min": 0.010923314839601517,
+    "max": 0.6154193878173828,
+    "frac_below_0.5": 0.9963078988588051
+  },
+  "metric2_centroid_drift": {
+    "n_defs": {
+      "0": {
+        "n_samples": 3304,
+        "centroid_drift": 21.5895,
+        "within_var_729": 31.3659,
+        "drift_ratio": 0.6883
+      },
+      "1": {
+        "n_samples": 2611,
+        "centroid_drift": 21.4295,
+        "within_var_729": 31.9709,
+        "drift_ratio": 0.6703
+      },
+      "2": {
+        "n_samples": 1490,
+        "centroid_drift": 21.4805,
+        "within_var_729": 32.3657,
+        "drift_ratio": 0.6637
+      },
+      "3": {
+        "n_samples": 730,
+        "centroid_drift": 21.6136,
+        "within_var_729": 32.7251,
+        "drift_ratio": 0.6605
+      },
+      "4+": {
+        "n_samples": 803,
+        "centroid_drift": 21.7432,
+        "within_var_729": 31.4817,
+        "drift_ratio": 0.6907
+      }
+    },
+    "n_classes": {
+      "0": {
+        "n_samples": 4502,
+        "centroid_drift": 21.4987,
+        "within_var_729": 32.257,
+        "drift_ratio": 0.6665
+      },
+      "1": {
+        "n_samples": 3317,
+        "centroid_drift": 21.5675,
+        "within_var_729": 31.5504,
+        "drift_ratio": 0.6836
+      },
+      "2": {
+        "n_samples": 604,
+        "centroid_drift": 21.4418,
+        "within_var_729": 32.1136,
+        "drift_ratio": 0.6677
+      },
+      "3": {
+        "n_samples": 184,
+        "centroid_drift": 21.4024,
+        "within_var_729": 32.6392,
+        "drift_ratio": 0.6557
+      },
+      "4+": {
+        "n_samples": 331,
+        "centroid_drift": 22.5144,
+        "within_var_729": 27.6651,
+        "drift_ratio": 0.8138
+      }
+    },
+    "line_count": {
+      "1-10": {
+        "n_samples": 175,
+        "centroid_drift": 21.9658,
+        "within_var_729": 31.9383,
+        "drift_ratio": 0.6878
+      },
+      "11-20": {
+        "n_samples": 587,
+        "centroid_drift": 21.6917,
+        "within_var_729": 31.5785,
+        "drift_ratio": 0.6869
+      },
+      "21-30": {
+        "n_samples": 527,
+        "centroid_drift": 21.5295,
+        "within_var_729": 32.2315,
+        "drift_ratio": 0.668
+      },
+      "31-40": {
+        "n_samples": 7649,
+        "centroid_drift": 21.582,
+        "within_var_729": 31.8131,
+        "drift_ratio": 0.6784
+      }
+    }
+  },
+  "metric3_linear_cka": {
+    "cka": 0.42582,
+    "n_subsample": 2000,
+    "n_total": 8938,
+    "elapsed_sec": 0.31
+  },
+  "interpretation": {
+    "cosine_verdict": "LOW (mean=0.292 < 0.5) \u2014 severe per-image directional drift",
+    "ndefs_drift": "drift within natural spread for n_defs",
+    "cka_verdict": "BELOW 0.5 (CKA=0.426) \u2014 substantial structural divergence between budgets",
+    "domain_shift": "CONFIRMED"
+  }
+}

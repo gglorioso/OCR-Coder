@@ -274,6 +274,13 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
+1. **✅ DONE (2026-03-04 session 7):** MVV Phase 1.3 — nonlinear encoding probe complete
+   - **Mode B (native 5-fold CV at 256 tokens):** Ridge n_defs=0.672±0.014, n_classes=0.780±0.023 | RF n_defs=0.412±0.018, n_classes=0.660±0.032
+   - **Key finding:** Ridge beats RF when trained natively at 256. Signal is genuinely weak — not nonlinearly hidden. Visual footprint gap confirmed (n_classes > n_defs by ~0.10 R² in both probes).
+   - **Domain shift confirmed:** smoke test — mean cosine similarity=0.220, 94.2% images cos<0.5, all centroid drift_ratios>1.0, CKA=0.47
+   - **Key files:** `MVV/Phase_1_3/nonlinear_probe/results/probe_results.json`, `MVV/Phase_1_3/domain_shift/scripts/run_drift_analysis.py`
+   - **Next:** Phase 1.4 — Syntactic Texture Probes (nesting depth classification, indentation style, keyword density regression)
+
 1. **✅ DONE (2026-03-01 session 6):** MVV Phase 1.2 — both experiments complete
    - **Exp1 (mean-pool, windowed labels, LinearRegression):** line_count R²=0.855@256 (PASS); n_defs=0.364 (FAIL); n_classes=0.568 (FAIL). Clean ablation: mean pooling is the architectural bottleneck independent of label correctness.
    - **Exp2 (pool4x4/pool8x8, windowed labels, PCA 1024 + Ridge alpha=100):** line_count R²=0.867@256 (PASS); n_defs=0.461 (FAIL); n_classes=0.675 (partial). pool4x4 beats pool8x8 for n_defs at low res. Spatial pooling adds ~+0.10 R² over mean-pool on structural targets.

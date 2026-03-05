@@ -1,0 +1,110 @@
+{
+  "experiment": "phase_1_3_nonlinear_encoding_probe_v2",
+  "pool": "pool4x4",
+  "targets": [
+    "n_defs",
+    "n_classes"
+  ],
+  "success_threshold": 0.8,
+  "mode_a_resolution_as_test": {
+    "pca_n_components": 1024,
+    "pca_variance_explained": 0.568448,
+    "ridge_alpha": 100.0,
+    "n_train": 8938,
+    "feature_dim": 18432,
+    "results": {
+      "budget_729": {
+        "n_defs": 0.851484,
+        "n_classes": 0.862008
+      },
+      "budget_441": {
+        "n_defs": 0.758337,
+        "n_classes": 0.783537
+      },
+      "budget_256": {
+        "n_defs": 0.461292,
+        "n_classes": 0.674684
+      },
+      "budget_121": {
+        "n_defs": -0.137592,
+        "n_classes": 0.109973
+      }
+    }
+  },
+  "mode_b_native_cv_256": {
+    "cv_budget": 256,
+    "n_folds": 5,
+    "n_samples": 8938,
+    "feature_dim": 18432,
+    "ridge_alpha": 100.0,
+    "rf_n_estimators": 300,
+    "probes": {
+      "ridge": {
+        "n_defs": {
+          "mean": 0.671729,
+          "std": 0.014152
+        },
+        "n_classes": {
+          "mean": 0.780261,
+          "std": 0.023239
+        }
+      },
+      "random_forest": {
+        "n_defs": {
+          "mean": 0.41244,
+          "std": 0.018195
+        },
+        "n_classes": {
+          "mean": 0.659977,
+          "std": 0.031652
+        }
+      }
+    },
+    "fold_details": {
+      "ridge": [
+        {
+          "n_defs": 0.658505,
+          "n_classes": 0.775318
+        },
+        {
+          "n_defs": 0.663324,
+          "n_classes": 0.784889
+        },
+        {
+          "n_defs": 0.665529,
+          "n_classes": 0.746481
+        },
+        {
+          "n_defs": 0.698492,
+          "n_classes": 0.818895
+        },
+        {
+          "n_defs": 0.672794,
+          "n_classes": 0.77572
+        }
+      ],
+      "random_forest": [
+        {
+          "n_defs": 0.39662,
+          "n_classes": 0.638243
+        },
+        {
+          "n_defs": 0.413267,
+          "n_classes": 0.6824
+        },
+        {
+          "n_defs": 0.393776,
+          "n_classes": 0.613179
+        },
+        {
+          "n_defs": 0.444913,
+          "n_classes": 0.702793
+        },
+        {
+          "n_defs": 0.413626,
+          "n_classes": 0.663272
+        }
+      ]
+    }
+  }
+}
