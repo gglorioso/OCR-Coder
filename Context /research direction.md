@@ -106,16 +106,14 @@ Two experiments run at 256 tokens — Exp1 (mean-pool, LinearRegression) and Exp
 - `MVV/Phase_1_4/scripts/run_probe_1_4.py` — RidgeClassifier / Ridge regression, native 5-fold CV on 1280-dim SigLIP features
 - `MVV/Phase_1_4/scripts/visualize_resolution_floor.py` — 2×2 grid comparing Bicubic / Nearest Neighbor / Area downsampling at 224×224, blown back up with NN to reveal pixel blocks; used to explain the semantic probe failure in the paper
 
-*Results (smoke test, 14,129 samples, 1280-dim mean-pooled features):*
-- **nesting_depth:** accuracy = 0.538 ± 0.013, macro-F1 = 0.405 — above 33% chance baseline, but weak. Shallow code (class 0) nearly invisible to the model (F1 = 0.027); medium and deep nesting distinguishable (F1 ≈ 0.58 / 0.61). The staircase gradient is partially visible.
-- **is_tabs:** accuracy = 0.9999 — **degenerate**. Only 1 tab-indented file in 14,129 samples. Dataset is 99.99% spaces; probe cannot be interpreted. Noted as data limitation.
-- **keyword_density:** R² = +0.120 ± 0.006 — weak positive signal. SigLIP retains a coarse linear fingerprint of keyword density, but 88% of variance is lost. Consistent with Phase 1.3's finding that fine-grained semantic content does not survive 256-token compression.
+*Results (FULL TEST — 8,821 clean MVV samples, budget_256, 1,152-dim features):*
+- **nesting_depth:** accuracy = 0.749 ± 0.008, macro-F1 = 0.551 ± 0.014. Shallow (F1=0.818) and medium (F1=0.744) well-separated; deep (class 2) weak (F1=0.091, 8.6% of data). SigLIP clearly encodes the indentation staircase.
+- **is_tabs:** degenerate — only 1 tab-indented file in 8,821 samples. Untestable; data limitation.
+- **keyword_density:** R² = +0.690 ± 0.009 — strong signal. SigLIP preserves keyword density well at 256-token budget on clean images.
 
-*Visual fidelity insight:* At 224×224 px with 40 lines per image, mean character height = **5.6 px**. Individual glyphs are ~2–3 px wide — below reliable character recognition threshold. This explains keyword_density R² ≈ 0.12: the model encodes density texture (bright/dark horizontal banding) but cannot resolve letter identity.
+*Critical correction:* An initial run on distorted Phase 2b features (aspect-ratio squashed to 768×768) produced acc=0.538, R²=0.120 — those figures were measuring distortion artifacts, not encoder capability. Results above are from clean, undistorted 800×800 MVV images.
 
-*Interpretation:* SigLIP perceives syntactic structure primarily through coarse visual geometry (indentation gradient → nesting depth), not through glyph-level reading. The pixel floor for tab/space detection is untestable on this dataset. The semantic baseline (keyword density) confirms that token-level semantics are largely lost at 256-token budget — supporting the hypothesis that visual tokens compress layout information at the expense of lexical content.
-
-*Next:* Run full label generation on 62,166-sample train set and execute probes at production scale.
+*Revised interpretation:* SigLIP encodes both structural layout (nesting staircase, acc=0.749) and lexical density (keyword count, R²=0.690) robustly on clean images. The 5.6px mean character height does not prevent keyword density encoding — the model reads density texture (bright/dark banding patterns) rather than individual glyph identity. The distortion experiment also reveals that aspect-ratio preservation is critical for production features.
 
 ---
 

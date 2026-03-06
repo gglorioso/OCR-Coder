@@ -1,0 +1,115 @@
+{
+  "experiment": "phase_1_4_syntax_probe",
+  "feature_dim": 1152,
+  "n_samples": 8821,
+  "alpha": 100.0,
+  "n_folds": 5,
+  "probes": {
+    "nesting_depth": {
+      "probe_type": "RidgeClassifier",
+      "alpha": 100.0,
+      "n_folds": 5,
+      "n_samples": 8821,
+      "classes": [
+        0,
+        1,
+        2
+      ],
+      "accuracy": {
+        "mean": 0.749008,
+        "std": 0.008317
+      },
+      "macro_f1": {
+        "mean": 0.551014,
+        "std": 0.014068
+      },
+      "per_class_f1": {
+        "0": {
+          "mean": 0.818079,
+          "std": 0.007422
+        },
+        "1": {
+          "mean": 0.743884,
+          "std": 0.011815
+        },
+        "2": {
+          "mean": 0.091077,
+          "std": 0.032215
+        }
+      },
+      "fold_acc": [
+        0.750708,
+        0.737528,
+        0.743764,
+        0.762472,
+        0.750567
+      ],
+      "fold_macro_f1": [
+        0.550746,
+        0.533586,
+        0.559445,
+        0.572552,
+        0.538739
+      ]
+    },
+    "is_tabs": {
+      "probe_type": "RidgeClassifier",
+      "alpha": 100.0,
+      "n_folds": 5,
+      "n_samples": 8821,
+      "classes": [
+        0,
+        1
+      ],
+      "accuracy": {
+        "mean": 0.999887,
+        "std": 0.000227
+      },
+      "macro_f1": {
+        "mean": 0.899972,
+        "std": 0.200057
+      },
+      "per_class_f1": {
+        "0": {
+          "mean": 0.999943,
+          "std": 0.000113
+        },
+        "1": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      "fold_acc": [
+        0.999433,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "fold_macro_f1": [
+        0.499858,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "keyword_density": {
+      "probe_type": "Ridge",
+      "alpha": 100.0,
+      "n_folds": 5,
+      "n_samples": 8821,
+      "r2": {
+        "mean": 0.689864,
+        "std": 0.009038
+      },
+      "fold_r2": [
+        0.691458,
+        0.675533,
+        0.703605,
+        0.687,
+        0.691722
+      ]
+    }
+  }
+}

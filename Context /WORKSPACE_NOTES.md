@@ -274,18 +274,16 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **🔄 IN PROGRESS (2026-03-05 session 8):** MVV Phase 1.4 — Syntactic Texture Probes
-   - **Why:** Test whether SigLIP perceives syntactic code structure: (1) nesting depth "staircase" visual profile, (2) tab vs space "pixel floor" sensitivity, (3) keyword density as semantic baseline
-   - **Scripts written:**
-     - `MVV/Phase_1_4/scripts/gen_phase_1_4_labels.py` — generates labels_1_4.jsonl (nesting_depth 0/1/2, is_tabs 0/1, keyword_density int) from raw .py windows via ast+tokenize
-     - `MVV/Phase_1_4/scripts/run_probe_1_4.py` — Ridge classifier/regression probes, native 5-fold CV on 1280-dim SigLIP features
-     - `MVV/Phase_1_4/scripts/visualize_resolution_floor.py` — 2x2 comparison grid showing Bicubic/NN/Area downsampling at 224x224 budget, with NN blow-up to reveal pixel blocks; explains why structural probes succeed while semantic (keyword) probes fail
-   - **Smoke test results (14,129 samples, 1280-dim features):**
-     - nesting_depth: accuracy=0.538±0.013, macro-F1=0.405 — above chance (33%), but weak; shallow class (F1=0.027) nearly invisible; medium/deep distinguishable (F1≈0.58/0.61)
-     - is_tabs: accuracy=0.9999 — DEGENERATE, only 1 tab file in dataset; uninformative, note as data limitation
-     - keyword_density: R²=+0.120±0.006 — weak positive; SigLIP retains coarse keyword density linearly, but 88% variance lost; consistent with Phase 1.3 finding
-   - **Visual fidelity rationale:** Mean char height at 224px = 5.6px (224/40 lines). At this resolution, letter shapes are ~2-3px wide — below reliable glyph recognition threshold. Explains keyword_density R²≈0.12: the model "sees" density patterns (bright/dark bands) but cannot resolve individual characters.
-   - **Next:** Run gen_phase_1_4_labels.py on full dataset (62,166 train), then run_probe_1_4.py; also check phase2b_v7/Qwen job logs
+1. **✅ DONE (2026-03-05 session 8):** MVV Phase 1.4 — Syntactic Texture Probes (full test)
+   - **Scripts:** gen_phase_1_4_labels.py, run_probe_1_4.py, visualize_resolution_floor.py
+   - **Full test results (8,821 clean MVV samples, budget_256, 1152-dim features):**
+     - nesting_depth: accuracy=0.749±0.008, macro-F1=0.551±0.014 — strong signal; shallow/medium well-separated (F1=0.818/0.744); deep (class 2) weak (F1=0.091, only 8.6% of data)
+     - is_tabs: degenerate — only 1 tab file in dataset; untestable, data limitation
+     - keyword_density: R²=0.690±0.009 — strong encoding; SigLIP preserves keyword density well at 256-token budget on clean images
+   - **Critical discovery:** Initial run used distorted Phase 2b features (aspect-ratio squashed to 768×768 via LANCZOS). Those results (acc=0.538, R²=0.120) were measuring distortion artifacts. Fixed to use clean MVV features (800×800, no post-render resize).
+   - **Key finding:** SigLIP encodes both structural layout (nesting staircase) and lexical density (keyword count) strongly on clean images. The 5.6px mean char height does NOT prevent keyword density encoding — the model reads density texture, not individual glyphs.
+   - **Key files:** `MVV/Phase_1_4/data/labels_1_4.jsonl` (8,821 rows), `MVV/Phase_1_4/results/probe_results.json`
+   - **Next:** Determine Phase 1.5 direction
 
 1. **✅ DONE (2026-03-04 session 7):** MVV Phase 1.3 — nonlinear encoding probe complete
    - **Mode B (native 5-fold CV at 256 tokens):** Ridge n_defs=0.672±0.014, n_classes=0.780±0.023 | RF n_defs=0.412±0.018, n_classes=0.660±0.032
