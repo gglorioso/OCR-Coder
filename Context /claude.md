@@ -10,6 +10,7 @@
 **Current Phase:** Phase 3 — MVV Phase 1.4 complete
 **Last Updated:** 2026-03-05 (session 8)
 
+- ✅ **Phase 1.2 Exp2 CORRECTED** — Native CV results: line_count R²=0.957@256 (PASS), n_defs=0.672@256, n_classes=0.780@256. Old cross-budget results (n_defs=0.461) measured domain shift, not information loss.
 - ✅ **Phase 1.3 nonlinear probe DONE** — Ridge native CV n_defs=0.672, n_classes=0.780; RF fails to beat Ridge → signal genuinely weak at 256 tokens
 - ✅ **Domain shift script written** — smoke test confirms DOMAIN SHIFT (cos sim=0.220, CKA=0.47); full run pending
 - ✅ **Phase 1.4 COMPLETE** — Full test on 8,821 clean MVV samples. nesting_depth acc=0.749, keyword_density R²=0.690. Initial smoke test (acc=0.538, R²=0.120) was on distorted Phase 2b features — discarded.

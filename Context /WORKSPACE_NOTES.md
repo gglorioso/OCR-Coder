@@ -298,6 +298,8 @@ A three-phase hybrid workflow combining vision and text:
    - **Key finding:** Coarse line density survives 256-token compression regardless of pooling; fine-grained function boundaries do not survive in either architecture.
    - **Key files:** `exp1_structural_regression/results/regression_results.json`, `exp2_spatial_regression/results/regression_results.json`
    - **Next:** Phase 1.2 Exp3 — nonlinear probe (MLP or k-NN) on PCA(pool4x4) features @ 256 tokens to test if n_defs is nonlinearly encoded
+   - **CORRECTION (2026-03-05 session 8):** Exp2 re-run with native-resolution 5-fold CV on clean MVV images. True results: line_count R²=0.957±0.003@256 (PASS), n_defs=0.672±0.014@256, n_classes=0.780±0.023@256. Full degradation: n_defs crosses R²=0.5 between 256 and 121 tokens; n_classes stays above 0.5 through 121 tokens. Old cross-budget results (n_defs=0.461, n_classes=0.675) were measuring domain shift artifact.
+   - **New files:** run_regression_v2.py, plot_results_v2.py, regression_results_v2.json, degradation_curve_v2.png
 
 1. **✅ DONE (2026-03-01 session 5):** MVV Phase 1.1 — both experiments complete
    - **Exp1 (mean-pool):** per-file probe null (cos sim=0.94); repo probe 76.3%@729→28.1%@121; knee at 256→121 tokens
