@@ -1,4 +1,6 @@
-# Phase 1.1 — Source-File Topological Fingerprinting
+# MVV Phase 1.1 — Repository Classification Probes
+
+**Status:** Complete (corrected 2026-03-05)
 
 ## Overview
 
@@ -15,63 +17,48 @@ independent of the words.
 
 ---
 
-## The Resolution-as-Test Paradigm
+## Experiments
 
-This is **not** a standard train/test split. We isolate a single variable:
-**pixel resolution**.
+### Exp1 — Mean-Pool Repository Probe
 
-| Step | What happens |
-|---|---|
-| **Train** | Feed 729-token (378×378 px) images through SigLIP → extract [1280] vectors → train logistic regression to map vectors to 7,418 file IDs |
-| **Test** | Feed the *exact same images* at 441, 256, and 121 tokens → run the frozen probe → measure accuracy drop |
+- **Method:** Mean-pool SigLIP features (1280D), LogisticRegression, cross-budget train/test (train @ 729, test @ 441/256/121)
+- **Results:** Repo probe 76.3%@729 → 28.1%@121; knee at 256→121 tokens
+- **Finding:** Strong repo signal at high res; collapses below 256 tokens. Per-file probe is null (cos sim=0.94 — probe collapses to mean).
+- **Key files:** `exp1_meanpool_probe/scripts/run_probe.py`, `exp1_meanpool_probe/results/repo_probe_results.json`
 
-The probe never sees new files. The only thing that changes between train and
-test is how many pixels SigLIP receives. When accuracy drops, it is proof that
-the feature vector collapsed due to spatial resolution loss — nothing else.
+### Exp2 — Spatial Max-Pool Comparison (Corrected 2026-03-05)
 
-This is equivalent to giving a patient a vision test: you don't show them a
-different chart to measure blindness; you show them the same chart from
-further away.
+- **Method:** pool4x4 / pool8x8 / meanpool features, PCA(1024) dimensionality equalization, LogisticRegression(class_weight="balanced"), **native 5-fold stratified CV per budget** (eliminates cross-budget domain shift confound)
+- **Dataset:** 8,980 samples, 15 repos, clean 800×800 MVV images
+- **Results (balanced accuracy):**
+
+| Pool | tok=729 | tok=441 | tok=256 | tok=121 |
+|---|---|---|---|---|
+| meanpool | **74.8%** | **72.5%** | **65.3%** | 43.4% |
+| pool8x8 | 71.0% | **72.1%** | 64.8% | **45.8%** |
+| pool4x4 | 68.3% | 67.3% | 61.2% | 40.0% |
+
+- **Key finding:** meanpool wins at high resolution (729 tokens); pool8x8 is competitive at mid-range (441) and marginally better at the resolution floor (121 tokens). pool4x4 is consistently worst — wrong spatial granularity.
+- **Correction note:** Original Exp2 result (pool8x8 69.8% vs meanpool 76.3%) was a curse-of-dimensionality artifact — pool8x8 had 73,728 dims vs meanpool's 1,152 with only ~9K samples. PCA(1024) equalization reverses the result. Cross-budget train/test also introduced domain shift confound (Phase 1.3 confirmed cos_sim=0.220 across budgets). Native CV eliminates both confounds.
+- **Key files:**
+  - `exp2_maxpool_comparison/scripts/run_probe_v2.py` — native CV + PCA + balanced probe runner
+  - `exp2_maxpool_comparison/scripts/plot_probe_v2.py` — degradation curve plotter
+  - `exp2_maxpool_comparison/results/probe_results_v2_balanced.json` — full results
+  - `exp2_maxpool_comparison/results/probe_degradation_v2.png` — degradation curve plot
 
 ---
 
 ## Dataset: `data_mvv/`
 
-**1 file → 1 class → 1 image.** Perfect class balance, zero imbalance.
+**1 file → 1 class → 1 image.** 15 repos (black, click, cpython, django, fastapi, flask, httpx, numpy, pandas, poetry, pydantic, pytorch, requests, scikit-learn, transformers).
 
-### Image Generation
+**Canvas spec:** Font DejaVu Sans Mono 16px, 10px char width, 20px line height, 80-char hard truncate, 40 lines per image, 800×800 px, PIL `L` (8-bit grayscale).
 
-Script: [`gen_mvv_images.py`](gen_mvv_images.py)
-SLURM:  [`gen_mvv_images.sh`](gen_mvv_images.sh)
-
-**Canvas spec:**
-
-| Parameter | Value |
-|---|---|
-| Font | DejaVu Sans Mono, 16px |
-| Char width | 10px |
-| Line height | 20px (forced) |
-| Max columns | 80 chars (hard truncate, no wrapping) |
-| Lines per image | 40 |
-| Canvas | 800 × 800 px |
-| Mode | PIL `L` (8-bit grayscale, no colour) |
-
-**AST-anchored start:** The 40-line window does not blindly start at line 0.
-The script uses Python's `ast` module to skip any leading license header or
-module docstring, anchoring instead to the first real structural node
-(`import`, `class`, or `def`). This ensures every image starts with
-high-density structural logic rather than a flat grey rectangle of comment text.
-
-**Repos (15):** black, click, cpython, django, fastapi, flask, httpx, numpy,
-pandas, poetry, pydantic, pytorch, requests, scikit-learn, transformers
-
-**Total images:** ~7,400 (one per valid, non-trivial `.py` file)
+**AST-anchored start:** The 40-line window skips leading license/docstring headers, anchoring to the first real structural node (`import`, `class`, or `def`).
 
 ---
 
 ## Token Budget Sweep
-
-SigLIP-SO400M uses 14×14 px patches. Square grids map to these exact targets:
 
 | Budget (tokens) | Grid | Pixel dims | px / line | Perception state |
 |---|---|---|---|---|
@@ -79,45 +66,3 @@ SigLIP-SO400M uses 14×14 px patches. Square grids map to these exact targets:
 | **441** | 21×21 | 294×294 | 7.3 px | Transition — semantic cliff edge |
 | **256** | 16×16 | 224×224 | 5.6 px | Unreadable — structural blocks visible, text dead |
 | **121** | 11×11 | 154×154 | 3.8 px | Topology floor — sub-symbolic noise |
-
-The resulting **degradation curve** (accuracy vs token budget) reveals the
-exact knee where the encoder loses its structural map of the file.
-
----
-
-## Feature Extraction
-
-Script: [`extract_mvv_features.py`](extract_mvv_features.py) *(to be written)*
-SLURM:  [`extract_mvv_features.sh`](extract_mvv_features.sh) *(to be written)*
-
-For each token budget:
-1. Bicubic-downsample the 800×800 PNG to target pixel dims
-2. Pass through frozen SigLIP-SO400M
-3. Extract patch tokens `h ∈ R^(N×1280)`
-4. Mean-pool → `x ∈ R^1280`
-5. Save to `data_mvv/features/budget_{N}/`
-
----
-
-## Linear Probe
-
-Script: [`run_probe.py`](run_probe.py) *(to be written)*
-
-- Model: `LogisticRegression` (lbfgs, no hidden layers) — intentionally
-  linear so accuracy reflects encoder quality, not probe capacity
-- Train: 729-token feature vectors
-- Test: 441 / 256 / 121-token feature vectors
-- Metrics: Top-1 accuracy, Top-5 accuracy, random baseline (1/7418 ≈ 0.01%),
-  lift over random
-- Output: degradation curve plot + results JSON
-
----
-
-## Success Criteria
-
-| Metric | Target |
-|---|---|
-| Top-1 @ 729 tokens | > 50% (encoder memorises structure at high res) |
-| Top-1 @ 256 tokens | Measurable drop (structural signal degrading) |
-| Top-1 @ 121 tokens | Near-random (encoder blind at topology floor) |
-| Knee location | Identifiable — sharp drop between two adjacent budgets |

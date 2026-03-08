@@ -301,6 +301,12 @@ A three-phase hybrid workflow combining vision and text:
    - **CORRECTION (2026-03-05 session 8):** Exp2 re-run with native-resolution 5-fold CV on clean MVV images. True results: line_count R²=0.957±0.003@256 (PASS), n_defs=0.672±0.014@256, n_classes=0.780±0.023@256. Full degradation: n_defs crosses R²=0.5 between 256 and 121 tokens; n_classes stays above 0.5 through 121 tokens. Old cross-budget results (n_defs=0.461, n_classes=0.675) were measuring domain shift artifact.
    - **New files:** run_regression_v2.py, plot_results_v2.py, regression_results_v2.json, degradation_curve_v2.png
 
+1. **✅ DONE (2026-03-05 session 8):** MVV Phase 1.1 Exp2 — Re-run with native CV + PCA + balanced weights
+   - **Changes:** Native 5-fold stratified CV per budget (eliminates domain shift); PCA(1024) equalizes pool dims; class_weight="balanced" corrects repo imbalance
+   - **Results (balanced, 8,980 samples, 15 repos):** meanpool: 74.8%@729, 72.5%@441, 65.3%@256, 43.4%@121 | pool8x8: 71.0%@729, 72.1%@441, 64.8%@256, 45.8%@121 | pool4x4: 68.3%@729, 67.3%@441, 61.2%@256, 40.0%@121
+   - **Key finding:** meanpool wins at high res; pool8x8 competitive at mid-range and edges ahead at 121 tokens; pool4x4 consistently weakest. Old pool8x8 "win" was curse-of-dimensionality artifact.
+   - **Key files:** run_probe_v2.py (balanced), probe_results_v2_balanced.json, probe_degradation_v2.png
+
 1. **✅ DONE (2026-03-01 session 5):** MVV Phase 1.1 — both experiments complete
    - **Exp1 (mean-pool):** per-file probe null (cos sim=0.94); repo probe 76.3%@729→28.1%@121; knee at 256→121 tokens
    - **Exp2 (adaptive max-pool):** 8×8 beats mean-pool below 256 tokens (36%@121 vs 28.1%); mean-pool wins at high res; crossover ~256 tokens

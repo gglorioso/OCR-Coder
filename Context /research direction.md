@@ -35,9 +35,17 @@ We are looking for the **"knee"** (failure point) for each tier to demonstrate t
 
 - **Per-file probe:** Null result — cosine similarity = 0.94 (probe collapses to mean)
 - **Repo probe:** 76.3% Top-1 @ 729 tokens → 28.1% @ 121 tokens; **knee at 256→121 tokens**
-- **Exp2 (adaptive max-pool 8×8):** Beats mean-pool below 256 tokens (36% @ 121 vs. 28.1%); mean-pool wins at high resolution; crossover ~256 tokens
-- **Key finding:** Macro-level taxonomy is resilient above 256 tokens; drops sharply below. Spatial pooling outperforms mean-pool in the low-budget regime.
-- **Key files:** `Phase_1_1/exp1_meanpool_probe/results/repo_probe_results.json`, `Phase_1_1/exp2_maxpool_comparison/results/maxpool_repo_results.json`, `maxpool_comparison.png`
+- **Exp2 (adaptive max-pool, corrected 2026-03-05):** Native 5-fold CV + PCA(1024) + class_weight="balanced", 8,980 samples, 15 repos:
+
+| Pool | tok=729 | tok=441 | tok=256 | tok=121 |
+|---|---|---|---|---|
+| meanpool | **74.8%** | **72.5%** | **65.3%** | 43.4% |
+| pool8x8 | 71.0% | **72.1%** | 64.8% | **45.8%** |
+| pool4x4 | 68.3% | 67.3% | 61.2% | 40.0% |
+
+- **Key finding:** meanpool wins at high resolution (729 tokens); pool8x8 competitive at mid-range (441) and edges ahead at the resolution floor (121 tokens); pool4x4 consistently worst.
+- **Correction note:** Original Exp2 result (pool8x8 69.8% vs meanpool 76.3%) trained cross-budget (budget_729 → budget_256/121), which introduced domain shift confound (Phase 1.3: cos sim=0.220). pool8x8 also had 73,728 dims vs meanpool's 1,152 with only ~9K samples — curse of dimensionality. PCA(1024) equalization reverses the old result. Native CV confirms meanpool is the stronger pooling strategy.
+- **Key files:** `Phase_1_1/exp1_meanpool_probe/results/repo_probe_results.json`, `Phase_1_1/exp2_maxpool_comparison/results/probe_results_v2_balanced.json`, `Phase_1_1/exp2_maxpool_comparison/results/probe_degradation_v2.png`
 
 ### 1.2 Structural Regression (Line / Function / Class Counts) ✅ COMPLETE
 
