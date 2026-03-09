@@ -6,7 +6,7 @@ For EACH budget independently, runs 5-fold CV (train on 4 folds, test on 1),
 reporting mean R² ± std. This isolates pure information loss from domain shift
 (unlike run_regression.py which trains on budget_729 and tests on lower budgets).
 
-Pool: pool4x4 only (shape [18432] fp16 per sample)
+Pools: mean (1152-D), pool4x4 (18432-D), pool8x8 (73728-D)
 Targets: line_count, n_defs, n_classes
 Pipeline per fold: PCA(n_components=min(1024, n_train, n_features)) → Ridge(alpha=100)
 
@@ -29,9 +29,10 @@ from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
 
 
-_REPO_ROOT   = Path(__file__).resolve().parents[4]          # OCR-Coder/
-FEATURES_ROOT = _REPO_ROOT / "MVV" / "Phase_1_1" / "exp2_maxpool_comparison" / "data" / "features_maxpool"
-POOL         = "pool4x4"
+_REPO_ROOT        = Path(__file__).resolve().parents[4]          # OCR-Coder/
+FEATURES_ROOT     = _REPO_ROOT / "MVV" / "Phase_1_1" / "exp2_maxpool_comparison" / "data" / "features_maxpool"
+MEAN_FEATURES_ROOT = _REPO_ROOT / "MVV" / "Phase_1_1" / "data_mvv" / "features"
+POOLS             = ["mean", "pool4x4", "pool8x8"]
 LABELS_PATH  = Path(__file__).resolve().parents[1] / "data" / "labels.jsonl"
 OUT_PATH     = Path(__file__).resolve().parents[1] / "results" / "regression_results_v2.json"
 
@@ -57,7 +58,10 @@ def load_labels(path: Path) -> dict:
 
 def load_budget_features(pool: str, budget: int) -> tuple:
     """Return (X [N, D], stems [N]) for the given pool/budget."""
-    d     = FEATURES_ROOT / pool / f"budget_{budget}"
+    if pool == "mean":
+        d = MEAN_FEATURES_ROOT / f"budget_{budget}"
+    else:
+        d = FEATURES_ROOT / pool / f"budget_{budget}"
     paths = sorted(d.glob("*.pt"))
     if not paths:
         raise FileNotFoundError(f"No .pt files in {d}")
@@ -90,11 +94,11 @@ def align(X: np.ndarray, stems: list, labels: dict) -> tuple:
 # Per-budget 5-fold CV
 # ---------------------------------------------------------------------------
 
-def run_budget_cv(budget: int, labels: dict) -> dict:
+def run_budget_cv(pool: str, budget: int, labels: dict) -> dict:
     t0 = time.time()
-    print(f"\n  budget_{budget}: loading features …", end="", flush=True)
+    print(f"\n  [{pool}] budget_{budget}: loading features …", end="", flush=True)
 
-    X_raw, stems = load_budget_features(POOL, budget)
+    X_raw, stems = load_budget_features(pool, budget)
     X, Y, _      = align(X_raw, stems, labels)
     N, D         = X.shape
     print(f" {N:,} samples × {D:,} dims  ({time.time()-t0:.1f}s)")
@@ -144,32 +148,40 @@ def run_budget_cv(budget: int, labels: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    print("=" * 65)
+    print("=" * 70)
     print("MVV Phase 1.2 Exp2 — Native-Resolution CV  (run_regression_v2)")
-    print("  pool4x4 | 5-fold CV per budget | PCA + Ridge | alpha=100")
-    print("=" * 65)
+    print("  mean + pool4x4 + pool8x8 | 5-fold CV per budget | PCA + Ridge | alpha=100")
+    print("=" * 70)
 
     labels = load_labels(LABELS_PATH)
     print(f"Labels loaded: {len(labels):,} stems")
 
-    budget_results: dict = {}
-    for budget in BUDGETS:
-        budget_results[str(budget)] = run_budget_cv(budget, labels)
+    all_results: dict = {}
+    for pool in POOLS:
+        print(f"\n{'='*70}")
+        print(f"  Pool: {pool}")
+        print(f"{'='*70}")
+        budget_results: dict = {}
+        for budget in BUDGETS:
+            budget_results[str(budget)] = run_budget_cv(pool, budget, labels)
+        all_results[pool] = budget_results
 
     # ── Summary table ──────────────────────────────────────────────────────
-    print()
-    print("=" * 65)
-    print(f"{'Budget':>8}   {'line_count R²':>16}   {'n_defs R²':>16}   {'n_classes R²':>16}")
-    print("-" * 65)
-    for budget in BUDGETS:
-        r = budget_results[str(budget)]
-        cols = []
-        for target in TARGETS:
-            m = r[target]["mean_r2"]
-            s = r[target]["std_r2"]
-            cols.append(f"{m:.2f}±{s:.2f}")
-        print(f"  {budget:>4}       {cols[0]:>16}   {cols[1]:>16}   {cols[2]:>16}")
-    print("=" * 65)
+    for pool in POOLS:
+        print()
+        print(f"  [{pool}]")
+        print("=" * 70)
+        print(f"{'Budget':>8}   {'line_count R²':>16}   {'n_defs R²':>16}   {'n_classes R²':>16}")
+        print("-" * 70)
+        for budget in BUDGETS:
+            r = all_results[pool][str(budget)]
+            cols = []
+            for target in TARGETS:
+                m = r[target]["mean_r2"]
+                s = r[target]["std_r2"]
+                cols.append(f"{m:.2f}±{s:.2f}")
+            print(f"  {budget:>4}       {cols[0]:>16}   {cols[1]:>16}   {cols[2]:>16}")
+        print("=" * 70)
 
     # ── Save JSON ──────────────────────────────────────────────────────────
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -179,10 +191,10 @@ def main() -> None:
             "5-fold native CV per budget — no cross-budget train/test. "
             "Isolates information loss from domain shift."
         ),
-        "pool":    POOL,
+        "pools":   POOLS,
         "alpha":   ALPHA,
         "n_folds": N_FOLDS,
-        "results": budget_results,
+        "results": all_results,
     }
     OUT_PATH.write_text(json.dumps(output, indent=2))
     print(f"\nResults saved → {OUT_PATH}")

@@ -7,17 +7,16 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — MVV Phase 1.4 complete
-**Last Updated:** 2026-03-05 (session 8)
+**Current Phase:** Phase 3 — MVV Phase 1.4 complete, Phase 1.2/1.3 visualizations updated
+**Last Updated:** 2026-03-08 (session 9)
 
 - ✅ **Phase 1.1 Exp2 CORRECTED** — Native CV + PCA(1024) + balanced weights. meanpool wins at 729 (74.8%), pool8x8 competitive at 441 (72.1%) and 121 (45.8%). Old pool8x8 "win" was dimensionality artifact.
-- ✅ **Phase 1.2 Exp2 CORRECTED** — Native CV results: line_count R²=0.957@256 (PASS), n_defs=0.672@256, n_classes=0.780@256. Old cross-budget results (n_defs=0.461) measured domain shift, not information loss.
-- ✅ **Phase 1.3 nonlinear probe DONE** — Ridge native CV n_defs=0.672, n_classes=0.780; RF fails to beat Ridge → signal genuinely weak at 256 tokens
-- ✅ **Domain shift script written** — smoke test confirms DOMAIN SHIFT (cos sim=0.220, CKA=0.47); full run pending
-- ✅ **Phase 1.4 COMPLETE** — Full test on 8,821 clean MVV samples. nesting_depth acc=0.749, keyword_density R²=0.690. Initial smoke test (acc=0.538, R²=0.120) was on distorted Phase 2b features — discarded.
+- ✅ **Phase 1.2 Exp2 MEAN BASELINE ADDED** — mean pool added as 3rd pool to run_regression_v2.py + plot_results_v2.py. Results: mean n_defs=0.663@256, pool8x8=0.692@256, gap is +0.03–0.08 R². Old "mean destroys boundaries (R²=0.364)" claim was domain-shift artifact — mean is weaker, not broken.
+- ✅ **Phase 1.3 domain shift plots DONE** — plot_domain_shift.py generates drift_ratio_bar.png + ndefs_displacement.png (300 dpi). All drift_ratios 0.66–0.81, below 1.0 threshold — no probe blindness triggered.
+- ✅ **Phase 1.4 COMPLETE** — Full test on 8,821 clean MVV samples. nesting_depth acc=0.749, keyword_density R²=0.690.
 - ⚠️ **Contrastive track (phase2b_v7) and Qwen status still unknown** — check job logs
 
-**Current Step:** Phase 1.1 and 1.2 Exp2 corrected with native CV. Phase 1.4 complete. Determine Phase 1.5 direction.
+**Current Step:** Phase 1.2 mean baseline confirmed (spatial pooling modest but consistent advantage). Phase 1.3 visualizations complete. Determine Phase 1.5 direction.
 
 ---
 

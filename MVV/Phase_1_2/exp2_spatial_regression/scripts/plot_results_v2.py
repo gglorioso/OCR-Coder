@@ -1,5 +1,6 @@
 """
 Plot Phase 1.2 Exp2 native-resolution CV degradation curve.
+Shows mean vs pool4x4 vs pool8x8 for each target in 3 subplots.
 Saves: MVV/Phase_1_2/exp2_spatial_regression/results/degradation_curve_v2.png
 """
 
@@ -14,7 +15,7 @@ import matplotlib.pyplot as plt
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[4]
+REPO_ROOT    = pathlib.Path(__file__).resolve().parents[4]
 RESULTS_FILE = REPO_ROOT / "MVV/Phase_1_2/exp2_spatial_regression/results/regression_results_v2.json"
 OUT_FILE     = REPO_ROOT / "MVV/Phase_1_2/exp2_spatial_regression/results/degradation_curve_v2.png"
 
@@ -25,97 +26,92 @@ with open(RESULTS_FILE) as f:
     data = json.load(f)
 
 results = data["results"]
-
-BUDGETS  = [121, 256, 441, 729]   # low → high resolution
+POOLS    = data.get("pools", ["pool4x4"])   # backward-compat with single-pool JSON
+BUDGETS  = [121, 256, 441, 729]             # low → high resolution
 TARGETS  = ["line_count", "n_defs", "n_classes"]
 LABELS   = {"line_count": "Line Count", "n_defs": "Num Definitions", "n_classes": "Num Classes"}
-COLORS   = {"line_count": "steelblue", "n_defs": "darkorange", "n_classes": "forestgreen"}
 
-# Extract mean and std per budget/target (sorted low→high)
-means = {t: [] for t in TARGETS}
-stds  = {t: [] for t in TARGETS}
-
-for b in BUDGETS:
-    bdata = results[str(b)]
-    for t in TARGETS:
-        means[t].append(bdata[t]["mean_r2"])
-        stds[t].append(bdata[t]["std_r2"])
-
-means = {t: np.array(v) for t, v in means.items()}
-stds  = {t: np.array(v) for t, v in stds.items()}
+POOL_STYLES = {
+    "mean":    {"linestyle": ":",  "marker": "^", "label_suffix": "mean"},
+    "pool4x4": {"linestyle": "-",  "marker": "o", "label_suffix": "pool4x4"},
+    "pool8x8": {"linestyle": "--", "marker": "s", "label_suffix": "pool8x8"},
+}
+POOL_COLORS = {
+    "mean":    {"line_count": "grey",           "n_defs": "rosybrown",   "n_classes": "darkkhaki"},
+    "pool4x4": {"line_count": "steelblue",      "n_defs": "darkorange",  "n_classes": "forestgreen"},
+    "pool8x8": {"line_count": "cornflowerblue", "n_defs": "sandybrown",  "n_classes": "mediumseagreen"},
+}
 
 # ---------------------------------------------------------------------------
 # Console summary table
 # ---------------------------------------------------------------------------
-print("=" * 70)
-print(f"{'Phase 1.2 Exp2 — Native CV R² Summary':^70}")
-print(f"{'(pool4x4, Ridge α=100, 5-fold native CV)':^70}")
-print("=" * 70)
-header = f"{'Target':<20}" + "".join(f"{'tok='+str(b):>12}" for b in BUDGETS)
-print(header)
-print("-" * 70)
-for t in TARGETS:
-    label = LABELS[t]
-    row = f"{label:<20}" + "".join(f"{means[t][i]:>12.4f}" for i in range(len(BUDGETS)))
-    print(row)
-print("-" * 70)
-print(f"{'(std)':^70}")
-for t in TARGETS:
-    label = LABELS[t]
-    row = f"{label:<20}" + "".join(f"(±{stds[t][i]:.4f}){'':>5}" for i in range(len(BUDGETS)))
-    print(row)
-print("=" * 70)
+for pool in POOLS:
+    print("=" * 72)
+    print(f"  [{pool}]  Phase 1.2 Exp2 — Native CV R² Summary")
+    print(f"  (Ridge α=100, 5-fold native CV)")
+    print("=" * 72)
+    header = f"{'Target':<20}" + "".join(f"{'tok='+str(b):>12}" for b in BUDGETS)
+    print(header)
+    print("-" * 72)
+    pool_data = results[pool]
+    for t in TARGETS:
+        label = LABELS[t]
+        row = f"{label:<20}" + "".join(f"{pool_data[str(b)][t]['mean_r2']:>12.4f}" for b in BUDGETS)
+        print(row)
+    print("-" * 72)
+    for t in TARGETS:
+        label = LABELS[t]
+        row = f"{label:<20}" + "".join(f"(±{pool_data[str(b)][t]['std_r2']:.4f}){'':>3}" for b in BUDGETS)
+        print(row)
+    print("=" * 72)
+    print()
 
 # ---------------------------------------------------------------------------
-# Plot
+# Plot — 3-panel (one per target), 2 lines per panel (pool4x4 vs pool8x8)
 # ---------------------------------------------------------------------------
 try:
     plt.style.use("seaborn-v0_8-whitegrid")
 except OSError:
-    pass  # fallback to matplotlib default
+    pass
 
-fig, ax = plt.subplots(figsize=(8, 5))
-
-# Use evenly-spaced integer positions, high→low resolution (left→right)
 BUDGETS_DESC = list(reversed(BUDGETS))   # [729, 441, 256, 121]
-x = np.arange(len(BUDGETS_DESC))         # [0, 1, 2, 3] — evenly spaced
+x = np.arange(len(BUDGETS_DESC))
 
-for t in TARGETS:
-    # Reverse the arrays to match BUDGETS_DESC order
-    m = means[t][::-1]
-    s = stds[t][::-1]
-    color = COLORS[t]
-    label = LABELS[t]
-    ax.plot(x, m, marker="o", linewidth=2, markersize=7, color=color, label=label,
-            markeredgewidth=0)
+fig, axes = plt.subplots(1, 3, figsize=(15, 5), sharey=True)
 
-# Threshold line
-ax.axhline(0.5, linestyle="--", color="grey", linewidth=1.2, label="R²=0.5 threshold")
+for ax, target in zip(axes, TARGETS):
+    for pool in POOLS:
+        pool_data = results[pool]
+        means = [pool_data[str(b)][target]["mean_r2"] for b in BUDGETS_DESC]
+        stds  = [pool_data[str(b)][target]["std_r2"]  for b in BUDGETS_DESC]
+        style = POOL_STYLES[pool]
+        color = POOL_COLORS[pool][target]
+        ax.plot(x, means,
+                linestyle=style["linestyle"], marker=style["marker"],
+                linewidth=2, markersize=7, color=color,
+                label=style["label_suffix"], markeredgewidth=0)
+        ax.fill_between(x,
+                        np.array(means) - np.array(stds),
+                        np.array(means) + np.array(stds),
+                        alpha=0.12, color=color)
 
-# Axes
-ax.set_xlim(-0.4, len(BUDGETS_DESC) - 0.6)
-ax.set_ylim(0.0, 1.05)
-ax.set_xticks(x)
-ax.set_xticklabels([str(b) for b in BUDGETS_DESC])
-ax.set_xlabel("Token Budget (resolution)", fontsize=12)
-ax.set_ylabel("R² (5-fold native CV)", fontsize=12)
+    ax.axhline(0.5, linestyle=":", color="grey", linewidth=1.2, label="R²=0.5")
+    ax.set_xlim(-0.4, len(BUDGETS_DESC) - 0.6)
+    ax.set_ylim(0.0, 1.05)
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(b) for b in BUDGETS_DESC])
+    ax.set_xlabel("Token Budget (resolution)", fontsize=11)
+    ax.set_title(LABELS[target], fontsize=12, fontweight="bold")
+    ax.legend(loc="lower right", fontsize=9, framealpha=0.9)
+    ax.grid(True, color="lightgrey", alpha=0.3)
 
-# Title + subtitle
+axes[0].set_ylabel("R² (5-fold native CV)", fontsize=11)
+
 fig.suptitle(
-    "Phase 1.2 Exp2 — Native CV Degradation Curve (pool4x4, Ridge α=100)",
-    fontsize=13, fontweight="bold", y=0.98
+    "Phase 1.2 Exp2 — Native CV Degradation: mean vs pool4x4 vs pool8x8  (Ridge α=100)",
+    fontsize=13, fontweight="bold", y=1.01
 )
-ax.set_title(
-    "Pure information loss at each resolution — domain shift eliminated",
-    fontsize=9.5, color="dimgrey", pad=4
-)
-
-# Grid
-ax.grid(True, color="lightgrey", alpha=0.3)
-
-# Legend
-ax.legend(loc="lower right", fontsize=10, framealpha=0.9)
 
 plt.tight_layout()
 fig.savefig(OUT_FILE, dpi=150, bbox_inches="tight")
-print(f"\nPNG saved to: {OUT_FILE}")
+print(f"PNG saved to: {OUT_FILE}")

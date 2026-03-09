@@ -274,6 +274,12 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
+1. **✅ DONE (2026-03-08 session 9):** MVV Phase 1.2 mean baseline + Phase 1.3 visualizations
+   - **Phase 1.2:** Added mean pool as 3rd pool to run_regression_v2.py and plot_results_v2.py. Reused Phase 1.1 data_mvv/features/ (8,938 stems, 100% overlap). Results: mean n_defs=0.663@256 vs pool8x8=0.692@256 — gap is +0.03–0.08 R², not catastrophic. Old README claim "mean-pooling actively destroys logical boundaries (R²=0.364)" was domain-shift artifact — corrected.
+   - **Phase 1.3:** Wrote plot_domain_shift.py. Produces drift_ratio_bar.png (grouped bar chart, drift_ratio by target/bucket) and ndefs_displacement.png (dual-line: centroid_drift vs within_var_729 per label count). All drift_ratios 0.66–0.81 — below 1.0, no probe blindness triggered in this data.
+   - **Key files:** run_regression_v2.py, plot_results_v2.py, MVV/Phase_1_3/domain_shift/scripts/plot_domain_shift.py
+   - **Next:** Determine Phase 1.5 direction
+
 1. **✅ DONE (2026-03-05 session 8):** MVV Phase 1.4 — Syntactic Texture Probes (full test)
    - **Scripts:** gen_phase_1_4_labels.py, run_probe_1_4.py, visualize_resolution_floor.py
    - **Full test results (8,821 clean MVV samples, budget_256, 1152-dim features):**
