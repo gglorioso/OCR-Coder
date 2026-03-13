@@ -274,7 +274,15 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **🔲 TODO (2026-03-13 session 11):** Phase 1.9 — fix val_gap plateau with two changes
+1. **✅ DONE (2026-03-13 session 12):** Phase 1.9a — ConvRoPEProjector + linear keyword probe, macro F1=0.780
+   - **Architecture:** SigLIP [1024,1152] → Conv2d(stride=2) → [256,1152] → 2D RoPE → MLP → [256,2048] → LinearProbe → [256,16]
+   - **Result:** class=0.98, import=0.96, def=0.93. Proves character-level data survives 32×32→16×16 compression.
+   - **Checkpoint:** MVV/Phase_1_9/checkpoints/best.pt
+
+1. **🔲 TODO (2026-03-13 session 12):** Phase 1.9b — LLM injection (resubmit with fp16 dtype fix)
+   - Inject 256 visual tokens as inputs_embeds prefix into DeepSeek-Coder-V2-Lite-Instruct
+   - Bugs fixed: weights_only, RoPE cache (manual greedy loop, use_cache=False), fp16 dtype mismatch
+   - **Next:** sbatch MVV/Phase_1_9/b/run_1_9b.sh → read reconstruction_report.md
    - **Change 1:** Add learnable temperature (`logit_scale = nn.Parameter(log(1.0))`) to ContrastiveAdapter dot-product
    - **Change 2:** Augment text queries: signature + first docstring sentence (re-run ast_extractor to pull `ast.get_docstring()`)
    - **Target:** val_gap > 0.3 (current best: 0.141 @ epoch 7)
