@@ -87,7 +87,9 @@ class SpatialContrastiveDataset(Dataset):
         # Stored as fp16; cast to float32 for numerics
         if vision.dtype != torch.float32:
             vision = vision.float()
-        # Expect shape [64, 1152]
+        # Features saved as flat [73728] — reshape to [64, 1152]
+        if vision.shape == (73728,):
+            vision = vision.reshape(64, 1152)
         if vision.shape != (64, 1152):
             return None
 

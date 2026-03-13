@@ -66,17 +66,16 @@ def embed_queries(
             # last_hidden_state: [B, seq_len, hidden]
             hidden = outputs.last_hidden_state  # [B, T, 1152]
 
-            # Pool at EOS token position (last non-padding token).
-            # SigLIP tokenizer pads on the right; the EOS token is the last
-            # real token before padding.  We find it via attention_mask.
-            attn_mask = inputs["attention_mask"]          # [B, T]
-            seq_lens = attn_mask.sum(dim=1) - 1          # index of last real token
-            eos_embeds = hidden[
-                torch.arange(hidden.size(0), device=device), seq_lens
-            ]  # [B, 1152]
+            # SiglipTokenizer uses fixed-length sequences without attention_mask.
+            # Mean-pool over all tokens (equivalent for fixed-length sequences).
+            if "attention_mask" in inputs:
+                attn_mask = inputs["attention_mask"].unsqueeze(-1).float()  # [B, T, 1]
+                pooled = (hidden * attn_mask).sum(dim=1) / attn_mask.sum(dim=1)
+            else:
+                pooled = hidden.mean(dim=1)  # [B, 1152]
 
-            eos_embeds = eos_embeds.float().cpu()
-            for q, emb in zip(batch_queries, eos_embeds):
+            pooled = pooled.float().cpu()
+            for q, emb in zip(batch_queries, pooled):
                 result[q] = emb
 
             if (start // batch_size) % 10 == 0:

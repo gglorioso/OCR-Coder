@@ -274,13 +274,16 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
-1. **🔲 TODO (2026-03-13 session 10):** Run Phase 1.8 contrastive adapter training
-   - **Scripts:** MVV/Phase_1_8/scripts/ (precompute_text_embeddings.py, dataset_1_8.py, model_1_8.py, train_1_8.py, run_phase_1_8.sh)
-   - **Command:** `sbatch MVV/Phase_1_8/scripts/run_phase_1_8.sh`
-   - **Key metric:** val_gap = val_pos_sim - val_neg_sim > 0.3 = success
-   - **Architecture:** SigLIP text encoder (1152D) + ContrastiveAdapter (2D RoPE + MLP 1152→1152) + BCEWithLogitsLoss
-   - **Ground truth:** 36,673 labeled nodes in MVV/Phase_1_8/data/ground_truth/ground_truth.jsonl
-   - **Visual validation passed:** bounding boxes confirmed correct on 30 sample images
+1. **🔲 TODO (2026-03-13 session 11):** Phase 1.9 — fix val_gap plateau with two changes
+   - **Change 1:** Add learnable temperature (`logit_scale = nn.Parameter(log(1.0))`) to ContrastiveAdapter dot-product
+   - **Change 2:** Augment text queries: signature + first docstring sentence (re-run ast_extractor to pull `ast.get_docstring()`)
+   - **Target:** val_gap > 0.3 (current best: 0.141 @ epoch 7)
+   - **Baseline:** Phase 1.8 best.pt (val_loss=0.5480, val_gap=0.141)
+
+1. **✅ DONE (2026-03-13 session 11):** Phase 1.8 contrastive adapter trained — val_gap=0.141, plateaued at half target
+   - **Result:** Adapter learns spatial separation (gap 0.066→0.141) but overfits after epoch 7, plateau thereafter
+   - **Root cause:** Function signatures too low-info; can't connect name to spatial position
+   - **Best checkpoint:** MVV/Phase_1_8/checkpoints/best.pt (gitignored)
 
 1. **✅ DONE (2026-03-13 session 10):** MVV Phases 1.5–1.8 — probes, visual enhancements, contrastive setup
 

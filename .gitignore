@@ -34,6 +34,9 @@ MVV/Phase_1_5/data/features/
 MVV/Phase_1_7/images/
 MVV/Phase_1_7/data/features/
 MVV/Phase_1_8/checkpoints/
+MVV/Phase_1_8/data/text_embeddings/
+MVV/Phase_1_8/data/validation_checks/
+MVV/Phase_1_9/data/
 
 # Eval results
 eval_results*.json
