@@ -31,6 +31,9 @@ data_v2b/
 MVV/Phase_1_1/data_mvv/
 MVV/Phase_1_1/exp2_maxpool_comparison/data/
 MVV/Phase_1_5/data/features/
+MVV/Phase_1_7/images/
+MVV/Phase_1_7/data/features/
+MVV/Phase_1_8/checkpoints/
 
 # Eval results
 eval_results*.json

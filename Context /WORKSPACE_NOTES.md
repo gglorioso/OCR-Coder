@@ -274,6 +274,16 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
+1. **🔲 TODO (2026-03-13 session 10):** Run Phase 1.8 contrastive adapter training
+   - **Scripts:** MVV/Phase_1_8/scripts/ (precompute_text_embeddings.py, dataset_1_8.py, model_1_8.py, train_1_8.py, run_phase_1_8.sh)
+   - **Command:** `sbatch MVV/Phase_1_8/scripts/run_phase_1_8.sh`
+   - **Key metric:** val_gap = val_pos_sim - val_neg_sim > 0.3 = success
+   - **Architecture:** SigLIP text encoder (1152D) + ContrastiveAdapter (2D RoPE + MLP 1152→1152) + BCEWithLogitsLoss
+   - **Ground truth:** 36,673 labeled nodes in MVV/Phase_1_8/data/ground_truth/ground_truth.jsonl
+   - **Visual validation passed:** bounding boxes confirmed correct on 30 sample images
+
+1. **✅ DONE (2026-03-13 session 10):** MVV Phases 1.5–1.8 — probes, visual enhancements, contrastive setup
+
 1. **✅ DONE (2026-03-08 session 9):** MVV Phase 1.2 mean baseline + Phase 1.3 visualizations
    - **Phase 1.2:** Added mean pool as 3rd pool to run_regression_v2.py and plot_results_v2.py. Reused Phase 1.1 data_mvv/features/ (8,938 stems, 100% overlap). Results: mean n_defs=0.663@256 vs pool8x8=0.692@256 — gap is +0.03–0.08 R², not catastrophic. Old README claim "mean-pooling actively destroys logical boundaries (R²=0.364)" was domain-shift artifact — corrected.
    - **Phase 1.3:** Wrote plot_domain_shift.py. Produces drift_ratio_bar.png (grouped bar chart, drift_ratio by target/bucket) and ndefs_displacement.png (dual-line: centroid_drift vs within_var_729 per label count). All drift_ratios 0.66–0.81 — below 1.0, no probe blindness triggered in this data.

@@ -1,0 +1,30 @@
+{
+  "experiment": "phase_1_6_attention_probe_experiment_B_2D_RoPE",
+  "description": "AttentionProbeRoPE (2D SinCos positional encoding) on method2_pool8x8 features, target=n_defs",
+  "architecture": {
+    "input_dim": 1152,
+    "n_tokens": 64,
+    "adapter": "Linear(1152,2048) -> GELU -> Linear(2048,2048)",
+    "attention": "MHA(embed_dim=2048, num_heads=16, batch_first=True)",
+    "positional_encoding": "2D SinCos (Y-axis: dims 0-1023, X-axis: dims 1024-2047)",
+    "regressor": "Linear(2048, 1)"
+  },
+  "hyperparameters": {
+    "lr": 0.0001,
+    "epochs": 20,
+    "batch_size": 64,
+    "optimizer": "AdamW",
+    "loss": "MSE"
+  },
+  "n_folds": 5,
+  "n_samples": 8938,
+  "fold_r2": [
+    0.847027,
+    0.873293,
+    0.872948,
+    0.886462,
+    0.88475
+  ],
+  "mean_r2": 0.872896,
+  "std_r2": 0.014099
+}

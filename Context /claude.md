@@ -7,8 +7,8 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — MVV Phase 1.4 complete, Phase 1.2/1.3 visualizations updated
-**Last Updated:** 2026-03-08 (session 9)
+**Current Phase:** Phase 3 — MVV Phase 1.8 Contrastive Adapter built, ready to train
+**Last Updated:** 2026-03-13 (session 10)
 
 - ✅ **Phase 1.1 Exp2 CORRECTED** — Native CV + PCA(1024) + balanced weights. meanpool wins at 729 (74.8%), pool8x8 competitive at 441 (72.1%) and 121 (45.8%). Old pool8x8 "win" was dimensionality artifact.
 - ✅ **Phase 1.2 Exp2 MEAN BASELINE ADDED** — mean pool added as 3rd pool to run_regression_v2.py + plot_results_v2.py. Results: mean n_defs=0.663@256, pool8x8=0.692@256, gap is +0.03–0.08 R². Old "mean destroys boundaries (R²=0.364)" claim was domain-shift artifact — mean is weaker, not broken.
@@ -16,7 +16,7 @@
 - ✅ **Phase 1.4 COMPLETE** — Full test on 8,821 clean MVV samples. nesting_depth acc=0.749, keyword_density R²=0.690.
 - ⚠️ **Contrastive track (phase2b_v7) and Qwen status still unknown** — check job logs
 
-**Current Step:** Phase 1.2 mean baseline confirmed (spatial pooling modest but consistent advantage). Phase 1.3 visualizations complete. Determine Phase 1.5 direction.
+**Current Step:** Phase 1.8 scripts built. Next: sbatch run_phase_1_8.sh, check val_gap > 0.3 in slurm log.
 
 ---
 

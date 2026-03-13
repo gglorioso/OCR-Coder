@@ -186,9 +186,25 @@ def compute_keyword_density(window_text: str) -> int:
 # Input parsing — detect and normalise all three input formats
 # ---------------------------------------------------------------------------
 
+def _stem_to_rel_path(stem: str) -> str:
+    """
+    Convert an MVV stem like 'black__action__main_py' to a relative path
+    like 'black/action/main.py'.  Double underscores are path separators;
+    the trailing '_py' suffix represents the '.py' extension.
+    """
+    parts = stem.split("__")
+    # Last part: replace trailing _py with .py
+    last = parts[-1]
+    if last.endswith("_py"):
+        last = last[:-3] + ".py"
+    parts[-1] = last
+    return "/".join(parts)
+
+
 def _detect_format(first_row: dict) -> str:
     """
-    Return 'A' (data_v2b), 'B' (Phase 1.1 manifest), or 'C' (explicit).
+    Return 'A' (data_v2b), 'B' (Phase 1.1 manifest), 'C' (explicit), or
+    'D' (stem-only MVV labels like Phase 1.2 labels.jsonl).
     """
     if "repo" in first_row and "start_line" in first_row and "image" in first_row:
         return "A"
@@ -196,7 +212,8 @@ def _detect_format(first_row: dict) -> str:
         return "B"
     if "stem" in first_row and "anchor_line" in first_row:
         return "C"
-    # Default: try B-like if image present, otherwise C-like
+    if "stem" in first_row and "anchor_line" not in first_row:
+        return "D"   # MVV stem-only (Phase 1.2 style): derive path from stem, anchor=0
     if "image" in first_row:
         return "B"
     return "C"
@@ -245,7 +262,7 @@ def load_labels_jsonl(path: Path, py_dir: Path) -> list[dict]:
                 anchor     = int(row["anchor_line"])
                 full_path  = py_dir / src_rel
 
-            else:
+            elif fmt == "C":
                 # Explicit format C
                 stem      = row["stem"]
                 anchor    = int(row["anchor_line"])
@@ -256,6 +273,14 @@ def load_labels_jsonl(path: Path, py_dir: Path) -> list[dict]:
                     full_path = py_dir / row["repo"] / src_rel
                 else:
                     full_path = py_dir / src_rel
+
+            else:
+                # Format D — stem-only MVV (Phase 1.2 labels.jsonl style)
+                # Derive source path from stem; MVV windows start at line 0
+                stem      = row["stem"]
+                anchor    = 0
+                src_rel   = _stem_to_rel_path(stem)
+                full_path = py_dir / src_rel
 
         except (KeyError, ValueError) as exc:
             print(f"  WARNING: skipping malformed row — {exc}", file=sys.stderr)
@@ -285,17 +310,15 @@ def main() -> None:
     parser.add_argument(
         "--py_dir",
         type=Path,
-        required=True,
-        help='Root directory of scraped .py repos (e.g. "Scraped Repos"). '
-             'For Format A (data_v2b), files are at py_dir/repo/source_file. '
-             'For Format B (Phase 1.1 manifest), files are at py_dir/source_file.',
+        default=_REPO_ROOT / "Scraped Repos",
+        help='Root directory of scraped .py repos (default: repo root / "Scraped Repos"). '
+             'For Format D (MVV stem-only), files are at py_dir/repo/path/file.py.',
     )
     parser.add_argument(
         "--labels_jsonl",
         type=Path,
-        required=True,
-        help="Input: data_v2b train.jsonl, Phase 1.1 manifest.jsonl, or "
-             "a custom labels.jsonl with stem/anchor_line fields.",
+        default=_REPO_ROOT / "MVV" / "Phase_1_2" / "exp1_structural_regression" / "data" / "labels.jsonl",
+        help="Input labels.jsonl (default: MVV Phase 1.2 stem-only labels, 8,980 stems).",
     )
     parser.add_argument(
         "--output",

@@ -2,9 +2,11 @@
 """
 run_probe_1_4.py — Syntax-style encoding probe for MVV Phase 1.4
 
-Probes whether SigLIP features (mean-pooled from precomputed_features_tiled/)
-encode low-level syntax properties of code windows.  Uses native 5-fold CV
-entirely within the 256-token mean-pool feature space.
+Probes whether SigLIP features (mean-pooled, budget_256) encode low-level
+syntax properties of code windows.  Uses native 5-fold CV entirely within
+the 256-token mean-pool feature space.
+
+Uses the clean MVV images (800x800, no distortion) from Phase 1.1.
 
 Three probes:
   nesting_depth   (int 0/1/2)  — Ridge classifier, accuracy + per-class F1
@@ -19,8 +21,8 @@ Why RidgeClassifier / Ridge regression:
   score indicates it is not linearly encoded at 256-token resolution.
 
 Feature loading:
-  Each .pt file in precomputed_features_tiled/ has shape [N_tiles, 1280] (fp16).
-  We mean-pool across tiles to produce a single [1280]-dim vector per window.
+  Each .pt file in Phase_1_1/data_mvv/features/budget_256/ has shape [1152] (fp16).
+  These are already mean-pooled — loaded directly, no further pooling needed.
 
 Output:
   MVV/Phase_1_4/results/probe_results.json
@@ -52,7 +54,7 @@ _PHASE_DIR  = _SCRIPT_DIR.parent
 _REPO_ROOT  = _PHASE_DIR.parent.parent
 
 DEFAULT_LABELS       = _PHASE_DIR / "data" / "labels_1_4.jsonl"
-DEFAULT_FEATURES_DIR = _REPO_ROOT / "precomputed_features_tiled"
+DEFAULT_FEATURES_DIR = _REPO_ROOT / "MVV" / "Phase_1_1" / "data_mvv" / "features" / "budget_256"
 DEFAULT_OUT_DIR      = _PHASE_DIR / "results"
 
 # Classification targets
@@ -60,7 +62,7 @@ CLF_TARGETS = ["nesting_depth", "is_tabs"]
 # Regression targets
 REG_TARGETS = ["keyword_density"]
 
-FEATURE_DIM = 1280   # SigLIP-SO400M output dimension
+FEATURE_DIM = 1152   # SigLIP-SO400M mean-pool output (budget_256)
 
 
 # ---------------------------------------------------------------------------
@@ -80,13 +82,12 @@ def load_labels(path: Path) -> list[dict]:
 
 def load_features(features_dir: Path, stems: list[str]) -> tuple[np.ndarray, list[str]]:
     """
-    Load mean-pooled features for the given stems.
+    Load clean MVV features for the given stems.
 
-    Each .pt file has shape [N_tiles, 1280] fp16.
-    Mean pool across tiles → [1280] float32 vector.
+    Each .pt file has shape [1152] fp16 (already mean-pooled at budget_256).
 
     Returns:
-      X     : np.ndarray of shape [N_found, 1280], float32
+      X     : np.ndarray of shape [N_found, 1152], float32
       found : list of stems for which a feature file existed
     """
     vecs  = []
@@ -101,8 +102,8 @@ def load_features(features_dir: Path, stems: list[str]) -> tuple[np.ndarray, lis
         t = torch.load(pt_path, map_location="cpu")
         if t.dtype == torch.float16:
             t = t.float()
-        # Shape: [N_tiles, 1280] → mean pool → [1280]
-        vec = t.mean(dim=0).numpy()
+        # Shape: [1152] — already mean-pooled, load directly
+        vec = t.numpy()
         vecs.append(vec)
         found.append(stem)
 
