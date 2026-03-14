@@ -279,7 +279,15 @@ A three-phase hybrid workflow combining vision and text:
    - **Result:** class=0.98, import=0.96, def=0.93. Proves character-level data survives 32×32→16×16 compression.
    - **Checkpoint:** MVV/Phase_1_9/checkpoints/best.pt
 
-1. **🔲 TODO (2026-03-13 session 12):** Phase 1.9b — LLM injection (resubmit with fp16 dtype fix)
+1. **🔲 TODO (2026-03-13 session 13):** Phase 2 — submit diagnostic alignment run
+   - `sbatch MVV/Phase_2/run_phase2.sh` — 500 train samples, 2 epochs, batch=1
+   - Watch val_loss: <8.0 = alignment working, <3.0 = target
+   - If passes: re-run with all 8082 train samples
+
+1. **✅ DONE (2026-03-13 session 13):** Phase 2 train_alignment.py built + OOM fixed
+   - Architecture: frozen DeepSeek 8-bit + unfrozen ConvRoPEProjector (lr=1e-5, warmup=100)
+   - Dataset: 40-line anchor window (not full file), MAX_TEXT_TOKENS=512, seq_len=768
+   - Fixes: batch=1 (OOM at batch=4), expandable_segments=True, anchor_line slicing
    - Inject 256 visual tokens as inputs_embeds prefix into DeepSeek-Coder-V2-Lite-Instruct
    - Bugs fixed: weights_only, RoPE cache (manual greedy loop, use_cache=False), fp16 dtype mismatch
    - **Next:** sbatch MVV/Phase_1_9/b/run_1_9b.sh → read reconstruction_report.md
