@@ -43,6 +43,12 @@ Selected per-sample edit distances (Run 1):
 
 Note: Run 1 LLM text output was not preserved — the report file was overwritten by Run 2 before committing.
 
+In your earlier tests (Phase 1.9b Run 1), the LLM output was complete gibberish or repetitive loops like m'm'm'm'm. This README notes a massive change: Run 2 is no longer producing garbage.
+
+Unaligned (Run 1): The vision tokens were so "foreign" to the LLM's brain that they caused a total system crash.
+
+Aligned (Run 2): Even after only 500 samples, the projector has learned to speak a tiny bit of "LLM language". The LLM now recognizes those 256 tokens as "input," but it doesn't quite know what they mean yet. Instead of crashing, it just defaults to its standard chat behavior—asking you for more instructions.
+
 ## Example Output (Run 2)
 
 **Reference — django__tests__admin_scripts__urls_py:**
