@@ -61,3 +61,7 @@ __pycache__/
 .idea/
 
 
+
+# Phase 1.9a precomputed features (large binary files)
+MVV/Phase_1_9/a/data/features/
+MVV/Phase_1_9/a/data/labels/

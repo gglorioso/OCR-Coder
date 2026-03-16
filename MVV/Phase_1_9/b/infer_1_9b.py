@@ -25,7 +25,7 @@ REPO_ROOT   = SCRIPT_DIR.parents[2]                   # .../OCR-Coder
 MANIFEST_PATH   = REPO_ROOT / "MVV/Phase_1_1/data_mvv/manifest.jsonl"
 FEATURES_DIR    = REPO_ROOT / "MVV/Phase_1_9/data/features"
 SCRAPED_DIR     = REPO_ROOT / "Scraped Repos"
-PROJECTOR_CKPT  = REPO_ROOT / "MVV/Phase_1_9/checkpoints/best.pt"
+PROJECTOR_CKPT  = REPO_ROOT / "MVV/Phase_2/checkpoints/best_aligned.pt"
 OUTPUT_DIR      = REPO_ROOT / "MVV/Phase_1_9/b/results"
 REPORT_PATH     = OUTPUT_DIR / "reconstruction_report.md"
 
@@ -214,7 +214,7 @@ def write_report(results: list, report_path: Path) -> None:
         "# Phase 1.9b — LLM Reconstruction Report",
         f"**Date:** {date_str}  "
         f"**Model:** DeepSeek-Coder-V2-Lite-Instruct  "
-        f"**Projector:** Phase 1.9a best.pt (macro_F1=0.780)",
+        f"**Projector:** Phase 2 best_aligned.pt (val_loss=1.392)",
         "",
         "## Summary",
         "| Metric | Value |",
@@ -289,13 +289,8 @@ def main() -> None:
     projector = ConvRoPEProjector(feat_dim=1152, proj_dim=2048).to(device)
 
     ckpt       = torch.load(PROJECTOR_CKPT, map_location="cpu", weights_only=False)
-    state_dict = ckpt["model_state_dict"]
-    # Checkpoint was saved from ConvRoPEKeywordDetector; strip "projector." prefix
-    proj_state = {
-        k[len("projector."):]: v
-        for k, v in state_dict.items()
-        if k.startswith("projector.")
-    }
+    # Phase 2 checkpoint saves projector_state_dict directly (no prefix)
+    proj_state = ckpt["projector_state_dict"]
     projector.load_state_dict(proj_state)
     projector.eval()
     print(f"  Projector loaded ({sum(p.numel() for p in projector.parameters()):,} params)")
