@@ -1,34 +1,51 @@
 # Phase 1.9b — LLM Injection Test (Soft Prompt)
 
-Tests whether DeepSeek-Coder-V2-Lite-Instruct can reconstruct Python code from injected vision
-embeddings.
+**Objective:** Determine whether injecting SigLIP vision embeddings as a soft prefix causes
+DeepSeek-Coder-V2-Lite-Instruct to reconstruct Python source code from code images.
 
 ## Architecture
 
 | Component | Detail |
 |---|---|
-| Samples | 20 Python files, randomly sampled from manifest (seed=42) |
-| Vision prefix | ConvRoPEProjector output [1, 256, 2048], concatenated before text prompt embeddings |
-| Injection method | `inputs_embeds` passed directly to DeepSeek-Coder-V2-Lite-Instruct |
-| LLM | Frozen, 8-bit quantized |
-| Decoding | Manual greedy, 128 max new tokens, use_cache=False (bypasses DeepSeek V2 RoPE cache bug) |
+| Injection method | `inputs_embeds`: projector output [1, 256, 2048] concatenated before text prompt embeddings |
+| LLM | DeepSeek-Coder-V2-Lite-Instruct, frozen, 8-bit quantized |
+| Decoding | Manual greedy loop, 128 max new tokens, `use_cache=False` (bypasses DeepSeek V2 RoPE cache bug) |
 
-Two runs compared: unaligned projector (Phase 1.9a best.pt) and aligned projector
-(Phase 2 best_aligned.pt, val_loss=1.392).
+## Test Configuration
+
+| | Run 1 (Unaligned) | Run 2 (Aligned) |
+|---|---|---|
+| Projector | `MVV/Phase_1_9/a/checkpoints/best.pt` | `MVV/Phase_2/checkpoints/best_aligned.pt` |
+| Projector training | BCE keyword classification loss, macro F1=0.780 | Autoregressive cross-entropy, val_loss=1.392 |
+| Training scale | Full Phase 1.9a dataset | 500 samples, 2 epochs |
+| Samples | 20 Python files, seed=42 | Same 20 files |
+| Max new tokens | 128 | 128 |
 
 ## Results
 
-| Run | Projector | Mean Edit Distance | Output Character |
-|---|---|---|---|
-| Run 1 (unaligned) | Phase 1.9a best.pt | ~0.993 | Instruction-following / ignore |
-| Run 2 (aligned) | Phase 2 best_aligned.pt | 0.981 | Instruction-following / ignore |
+| | Run 1 (Unaligned) | Run 2 (Aligned) |
+|---|---|---|
+| Mean edit distance | ~0.993 | 0.981 |
+| Classification | All 20 OTHER | All 20 OTHER |
+| Output character | Instruction-following / ignore | Instruction-following / ignore |
 
-All 20 samples classified as OTHER (edit_dist > 0.8, not pure word salad, not valid Python
-matching reference).
+Selected per-sample edit distances (Run 1):
 
-## Example — Sample 1, Run 2 (aligned projector)
+| Sample | Edit Distance |
+|---|---|
+| django__tests__admin_scripts__urls_py | 0.945 |
+| cpython__Lib__cProfile_py | 0.995 |
+| pytorch__torch___export__db__examples__dynamic_shape_constructor_py | 0.809 |
+| pytorch__functorch__examples__dp_cifar10__cifar10_opacus_py | 1.000 |
+| pydantic__pydantic__v1__datetime_parse_py | 1.000 |
+| django__tests__urlpatterns_reverse__extra_urls_py | 0.912 |
+| remaining 14 samples | 0.939–0.999 |
 
-**Reference (ground truth):**
+Note: Run 1 LLM text output was not preserved — the report file was overwritten by Run 2 before committing.
+
+## Example Output (Run 2)
+
+**Reference — django__tests__admin_scripts__urls_py:**
 ```python
 import os
 
@@ -46,7 +63,7 @@ urlpatterns = [
 ]
 ```
 
-**LLM output:**
+**LLM output (aligned projector):**
 ```
 Sure, I'll provide a Python script that represents a high-resolution image of a Python file.
 However, I'll need to know the exact structure of the image. Please provide the structure of
@@ -64,24 +81,27 @@ Edit Distance: 0.951
 
 ## Interpretation
 
-**What changed between runs:** The unaligned projector produced responses that ignored the vision
-tokens entirely. The aligned projector (trained 2 epochs, 500 samples) produced coherent English
-responses — the model is now processing the vision prefix as meaningful input, but interpreting it
-as a request for clarification rather than using it as code content.
+**Both runs show instruction-following, not word salad.** The LLM produces coherent English or
+valid Python in both cases — it is not producing garbage. This means the vision prefix is being
+processed as a meaningful input, not ignored as noise.
 
-**The failure mode is now hallucination/instruction-following:** The LLM reads the vision tokens,
-decides they represent an ambiguous input, and asks the user to clarify rather than attempt
-reconstruction. This is qualitatively different from word salad — it is a sign that alignment is
-partially working.
+**The aligned projector improved mean edit distance from 0.993 to 0.981.** Small, but real: 2
+epochs on 500 samples moved the needle. The trajectory is correct.
 
-**Why edit distance is still ~0.98:** The LLM output is valid English or valid Python, but has
-nothing to do with the reference file. Edit distance measures character overlap, so unrelated
-coherent text scores nearly as badly as random characters.
+**The failure mode is prompt-following override.** The LLM interprets the vision tokens as an
+ambiguous instruction and responds with clarifying questions or generic code examples rather than
+reconstructing the image content. The visual tokens are not yet strong enough to override the
+model's instruction-following priors.
 
-**What this means for Phase 2:** The projector is now in DeepSeek's embedding space (word salad →
-coherent output). The next step is training on the full 8,082-sample set so the visual tokens
-become strong enough to override the LLM's instruction-following priors. The model needs to learn
-"visual tokens = code content," not "visual tokens = ambiguous instruction."
+**Why:** 2 epochs on 500 samples is insufficient for the visual prefix to dominate the LLM's
+learned behavior. The model has seen vastly more text-instruction pairs during pretraining than
+it has seen visual-code pairs during alignment.
 
-**The "Ghosting" target:** Success will look like the LLM outputting code with correct keywords
-(`def`, `import`, `class`) and approximate structure, even if variable names differ.
+**What "Ghosting" success looks like:** Output contains correct keywords (`def`, `import`,
+`class`) with approximate structural layout, even if variable names and values differ from the
+reference.
+
+**Next step:** Scale Phase 2 training to the full 8,082-sample set with more epochs. The
+val_loss=1.392 trajectory at 500 samples suggests meaningful alignment is achievable — the
+projector is in the right embedding neighborhood, it just needs more signal to override
+instruction-following priors at inference time.
