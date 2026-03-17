@@ -1,0 +1,2034 @@
+{
+  "black": {
+    "query_text": "Python source code formatter with deeply nested AST traversal and recursive tree walking logic",
+    "target_repo": "black",
+    "recall_at_1": 0,
+    "recall_at_5": 1,
+    "ranked": [
+      {
+        "stem": "django__django__db__models__constraints_py",
+        "repo": "django",
+        "score": 0.7143100500106812
+      },
+      {
+        "stem": "numpy__numpy___typing___array_like_py",
+        "repo": "numpy",
+        "score": 0.7083116769790649
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__db_py",
+        "repo": "flask",
+        "score": 0.6958867311477661
+      },
+      {
+        "stem": "black__tests__data__cases__class_methods_new_line_py",
+        "repo": "black",
+        "score": 0.692533552646637
+      },
+      {
+        "stem": "flask__src__flask__cli_py",
+        "repo": "flask",
+        "score": 0.6906720399856567
+      },
+      {
+        "stem": "numpy__numpy___build_utils__gcc_build_bitness_py",
+        "repo": "numpy",
+        "score": 0.6882352828979492
+      },
+      {
+        "stem": "numpy__numpy___core___exceptions_py",
+        "repo": "numpy",
+        "score": 0.6837764382362366
+      },
+      {
+        "stem": "numpy__numpy__lib__introspect_py",
+        "repo": "numpy",
+        "score": 0.6822502613067627
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__views_py",
+        "repo": "flask",
+        "score": 0.6810346841812134
+      },
+      {
+        "stem": "flask__src__flask__wrappers_py",
+        "repo": "flask",
+        "score": 0.6789076328277588
+      },
+      {
+        "stem": "django__django__contrib__contenttypes__forms_py",
+        "repo": "django",
+        "score": 0.6783747673034668
+      },
+      {
+        "stem": "django__tests__m2o_recursive__tests_py",
+        "repo": "django",
+        "score": 0.6741007566452026
+      },
+      {
+        "stem": "flask__src__flask__blueprints_py",
+        "repo": "flask",
+        "score": 0.6722939014434814
+      },
+      {
+        "stem": "flask__src__flask__testing_py",
+        "repo": "flask",
+        "score": 0.6718399524688721
+      },
+      {
+        "stem": "django__django__utils__module_loading_py",
+        "repo": "django",
+        "score": 0.6699597835540771
+      },
+      {
+        "stem": "flask__src__flask__sessions_py",
+        "repo": "flask",
+        "score": 0.6693874597549438
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_ma_py",
+        "repo": "numpy",
+        "score": 0.6658696532249451
+      },
+      {
+        "stem": "django__django__contrib__messages__api_py",
+        "repo": "django",
+        "score": 0.6649808883666992
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_complex_py",
+        "repo": "black",
+        "score": 0.6623561382293701
+      },
+      {
+        "stem": "black__src__black__comments_py",
+        "repo": "black",
+        "score": 0.6615555882453918
+      },
+      {
+        "stem": "flask__src__flask__globals_py",
+        "repo": "flask",
+        "score": 0.6595796346664429
+      },
+      {
+        "stem": "flask__src__flask__logging_py",
+        "repo": "flask",
+        "score": 0.6591445803642273
+      },
+      {
+        "stem": "django__django__utils__hashable_py",
+        "repo": "django",
+        "score": 0.6590495109558105
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__operations_py",
+        "repo": "django",
+        "score": 0.6586170196533203
+      },
+      {
+        "stem": "black__src__black__report_py",
+        "repo": "black",
+        "score": 0.6579047441482544
+      },
+      {
+        "stem": "numpy__numpy___build_utils__process_src_template_py",
+        "repo": "numpy",
+        "score": 0.6577800512313843
+      },
+      {
+        "stem": "numpy__numpy___core__cversions_py",
+        "repo": "numpy",
+        "score": 0.6575478315353394
+      },
+      {
+        "stem": "django__tests__custom_migration_operations__more_operations_py",
+        "repo": "django",
+        "score": 0.6575055122375488
+      },
+      {
+        "stem": "django__django__contrib__admin__checks_py",
+        "repo": "django",
+        "score": 0.655314564704895
+      },
+      {
+        "stem": "django__django__urls__utils_py",
+        "repo": "django",
+        "score": 0.6546214818954468
+      },
+      {
+        "stem": "flask__tests__type_check__typing_app_decorators_py",
+        "repo": "flask",
+        "score": 0.6545482277870178
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__tasks_py",
+        "repo": "flask",
+        "score": 0.654497504234314
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_polynomial_py",
+        "repo": "numpy",
+        "score": 0.6540372371673584
+      },
+      {
+        "stem": "django__django__core__cache__utils_py",
+        "repo": "django",
+        "score": 0.6524782180786133
+      },
+      {
+        "stem": "flask__src__flask__sansio__scaffold_py",
+        "repo": "flask",
+        "score": 0.6513634324073792
+      },
+      {
+        "stem": "flask__tests__type_check__typing_route_py",
+        "repo": "flask",
+        "score": 0.6511175632476807
+      },
+      {
+        "stem": "flask__src__flask__json__tag_py",
+        "repo": "flask",
+        "score": 0.6507099866867065
+      },
+      {
+        "stem": "flask__src__flask__config_py",
+        "repo": "flask",
+        "score": 0.6499800682067871
+      },
+      {
+        "stem": "numpy__numpy__linalg__lapack_lite__fortran_py",
+        "repo": "numpy",
+        "score": 0.6497839689254761
+      },
+      {
+        "stem": "numpy__numpy___core__code_generators__generate_ufunc_api_py",
+        "repo": "numpy",
+        "score": 0.6486697196960449
+      },
+      {
+        "stem": "numpy__numpy__ma__testutils_py",
+        "repo": "numpy",
+        "score": 0.6485797166824341
+      },
+      {
+        "stem": "django__django__template__backends__utils_py",
+        "repo": "django",
+        "score": 0.6480892896652222
+      },
+      {
+        "stem": "flask__tests__type_check__typing_error_handler_py",
+        "repo": "flask",
+        "score": 0.6463900208473206
+      },
+      {
+        "stem": "numpy__numpy__f2py__func2subr_py",
+        "repo": "numpy",
+        "score": 0.6454580426216125
+      },
+      {
+        "stem": "numpy__numpy__ma__mrecords_py",
+        "repo": "numpy",
+        "score": 0.6451914310455322
+      },
+      {
+        "stem": "flask__docs__conf_py",
+        "repo": "flask",
+        "score": 0.6448172330856323
+      },
+      {
+        "stem": "black__src__black__lines_py",
+        "repo": "black",
+        "score": 0.6442100405693054
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__blog_py",
+        "repo": "flask",
+        "score": 0.6417127847671509
+      },
+      {
+        "stem": "numpy__numpy___typing___scalars_py",
+        "repo": "numpy",
+        "score": 0.6416857242584229
+      },
+      {
+        "stem": "django__tests__m2m_multiple__tests_py",
+        "repo": "django",
+        "score": 0.6401224732398987
+      },
+      {
+        "stem": "numpy__numpy__polynomial___polybase_py",
+        "repo": "numpy",
+        "score": 0.6397926211357117
+      },
+      {
+        "stem": "black__src__black__concurrency_py",
+        "repo": "black",
+        "score": 0.6392732262611389
+      },
+      {
+        "stem": "black__src__black__handle_ipynb_magics_py",
+        "repo": "black",
+        "score": 0.6389791965484619
+      },
+      {
+        "stem": "numpy__numpy___core__umath_py",
+        "repo": "numpy",
+        "score": 0.6387242078781128
+      },
+      {
+        "stem": "flask__src__flask__sansio__app_py",
+        "repo": "flask",
+        "score": 0.6370092034339905
+      },
+      {
+        "stem": "flask__src__flask__debughelpers_py",
+        "repo": "flask",
+        "score": 0.6368390321731567
+      },
+      {
+        "stem": "black__tests__data__cases__attribute_access_on_number_literals_py",
+        "repo": "black",
+        "score": 0.6356930136680603
+      },
+      {
+        "stem": "django__tests__cache__models_py",
+        "repo": "django",
+        "score": 0.634409487247467
+      },
+      {
+        "stem": "django__tests__custom_pk__models_py",
+        "repo": "django",
+        "score": 0.6341739892959595
+      },
+      {
+        "stem": "django__django__contrib__gis__gdal__layer_py",
+        "repo": "django",
+        "score": 0.6326494216918945
+      },
+      {
+        "stem": "django__tests__check_framework__urls__cbv_as_view_py",
+        "repo": "django",
+        "score": 0.6326186656951904
+      },
+      {
+        "stem": "black__tests__data__cases__line_ranges_exceeding_end_py",
+        "repo": "black",
+        "score": 0.63251793384552
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_py",
+        "repo": "black",
+        "score": 0.6320748925209045
+      },
+      {
+        "stem": "numpy__numpy__core__umath_py",
+        "repo": "numpy",
+        "score": 0.631909966468811
+      },
+      {
+        "stem": "numpy__numpy__lib___utils_impl_py",
+        "repo": "numpy",
+        "score": 0.6315951943397522
+      },
+      {
+        "stem": "flask__src__flask__app_py",
+        "repo": "flask",
+        "score": 0.6304756999015808
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_long_py",
+        "repo": "black",
+        "score": 0.6295597553253174
+      },
+      {
+        "stem": "flask__src__flask__signals_py",
+        "repo": "flask",
+        "score": 0.628980278968811
+      },
+      {
+        "stem": "numpy__numpy__lib___version_py",
+        "repo": "numpy",
+        "score": 0.6288316249847412
+      },
+      {
+        "stem": "numpy__numpy__lib___array_utils_impl_py",
+        "repo": "numpy",
+        "score": 0.6275558471679688
+      },
+      {
+        "stem": "black__tests__data__cases__pep_572_py310_py",
+        "repo": "black",
+        "score": 0.6268585920333862
+      },
+      {
+        "stem": "numpy__numpy__polynomial__polyutils_py",
+        "repo": "numpy",
+        "score": 0.626679003238678
+      },
+      {
+        "stem": "black__tests__data__cases__power_op_spacing_long_py",
+        "repo": "black",
+        "score": 0.6262613534927368
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__python2_detection_py",
+        "repo": "black",
+        "score": 0.6255626678466797
+      },
+      {
+        "stem": "black__tests__data__cases__bytes_docstring_py",
+        "repo": "black",
+        "score": 0.6251766681671143
+      },
+      {
+        "stem": "numpy__numpy__ma__extras_py",
+        "repo": "numpy",
+        "score": 0.6236853003501892
+      },
+      {
+        "stem": "django__django__core__management__commands__showmigrations_py",
+        "repo": "django",
+        "score": 0.6222495436668396
+      },
+      {
+        "stem": "flask__src__flask__views_py",
+        "repo": "flask",
+        "score": 0.6219230890274048
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_long_py",
+        "repo": "black",
+        "score": 0.6217383742332458
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__features_py",
+        "repo": "django",
+        "score": 0.6185548901557922
+      },
+      {
+        "stem": "black__tests__data__cases__module_docstring_2_py",
+        "repo": "black",
+        "score": 0.6177480816841125
+      },
+      {
+        "stem": "flask__src__flask__helpers_py",
+        "repo": "flask",
+        "score": 0.6164946556091309
+      },
+      {
+        "stem": "numpy__numpy___core___string_helpers_py",
+        "repo": "numpy",
+        "score": 0.6151766180992126
+      },
+      {
+        "stem": "numpy__numpy__lib___scimath_impl_py",
+        "repo": "numpy",
+        "score": 0.6131373047828674
+      },
+      {
+        "stem": "django__tests__constraints__models_py",
+        "repo": "django",
+        "score": 0.6129938364028931
+      },
+      {
+        "stem": "django__tests__syndication_tests__feeds_py",
+        "repo": "django",
+        "score": 0.6117473840713501
+      },
+      {
+        "stem": "numpy__numpy___core__defchararray_py",
+        "repo": "numpy",
+        "score": 0.609173059463501
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__string_quotes_py",
+        "repo": "black",
+        "score": 0.6038757562637329
+      },
+      {
+        "stem": "black__tests__data__cases__beginning_backslash_py",
+        "repo": "black",
+        "score": 0.6019770503044128
+      },
+      {
+        "stem": "black__tests__data__cases__type_comment_syntax_error_py",
+        "repo": "black",
+        "score": 0.5989264249801636
+      },
+      {
+        "stem": "black__tests__data__cases__fmtskip7_py",
+        "repo": "black",
+        "score": 0.5986305475234985
+      },
+      {
+        "stem": "black__profiling__list_huge_py",
+        "repo": "black",
+        "score": 0.5984585285186768
+      },
+      {
+        "stem": "black__profiling__mix_huge_py",
+        "repo": "black",
+        "score": 0.597663164138794
+      },
+      {
+        "stem": "black__profiling__mix_big_py",
+        "repo": "black",
+        "score": 0.597663164138794
+      },
+      {
+        "stem": "django__tests__urlpatterns__more_urls_py",
+        "repo": "django",
+        "score": 0.5928617119789124
+      },
+      {
+        "stem": "django__django__db__models__fields__proxy_py",
+        "repo": "django",
+        "score": 0.591221809387207
+      },
+      {
+        "stem": "django__tests__async__models_py",
+        "repo": "django",
+        "score": 0.5906600952148438
+      },
+      {
+        "stem": "black__tests__data__cases__comments8_py",
+        "repo": "black",
+        "score": 0.5889319777488708
+      },
+      {
+        "stem": "django__django__conf__locale__zh_Hant__formats_py",
+        "repo": "django",
+        "score": 0.588426947593689
+      },
+      {
+        "stem": "flask__examples__javascript__js_example__views_py",
+        "repo": "flask",
+        "score": 0.5858765840530396
+      }
+    ]
+  },
+  "flask": {
+    "query_text": "Web framework with decorator-based routing, request context middleware, and HTTP handler chains",
+    "target_repo": "flask",
+    "recall_at_1": 0,
+    "recall_at_5": 1,
+    "ranked": [
+      {
+        "stem": "django__django__utils__module_loading_py",
+        "repo": "django",
+        "score": 0.6476490497589111
+      },
+      {
+        "stem": "django__django__contrib__messages__api_py",
+        "repo": "django",
+        "score": 0.6228601932525635
+      },
+      {
+        "stem": "django__django__utils__hashable_py",
+        "repo": "django",
+        "score": 0.6206570863723755
+      },
+      {
+        "stem": "flask__src__flask__json__tag_py",
+        "repo": "flask",
+        "score": 0.6197850704193115
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__db_py",
+        "repo": "flask",
+        "score": 0.6173240542411804
+      },
+      {
+        "stem": "flask__src__flask__testing_py",
+        "repo": "flask",
+        "score": 0.616923451423645
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_ma_py",
+        "repo": "numpy",
+        "score": 0.6152567863464355
+      },
+      {
+        "stem": "django__tests__m2o_recursive__tests_py",
+        "repo": "django",
+        "score": 0.609154224395752
+      },
+      {
+        "stem": "flask__src__flask__blueprints_py",
+        "repo": "flask",
+        "score": 0.6084438562393188
+      },
+      {
+        "stem": "django__django__urls__utils_py",
+        "repo": "django",
+        "score": 0.6055740118026733
+      },
+      {
+        "stem": "black__src__black__report_py",
+        "repo": "black",
+        "score": 0.6044232845306396
+      },
+      {
+        "stem": "numpy__numpy__linalg__lapack_lite__fortran_py",
+        "repo": "numpy",
+        "score": 0.6000988483428955
+      },
+      {
+        "stem": "flask__tests__type_check__typing_app_decorators_py",
+        "repo": "flask",
+        "score": 0.5983575582504272
+      },
+      {
+        "stem": "django__tests__constraints__models_py",
+        "repo": "django",
+        "score": 0.5975600481033325
+      },
+      {
+        "stem": "black__src__black__concurrency_py",
+        "repo": "black",
+        "score": 0.5971154570579529
+      },
+      {
+        "stem": "django__django__contrib__admin__checks_py",
+        "repo": "django",
+        "score": 0.5961317420005798
+      },
+      {
+        "stem": "black__tests__data__cases__pep_572_py310_py",
+        "repo": "black",
+        "score": 0.5961112976074219
+      },
+      {
+        "stem": "django__django__db__models__constraints_py",
+        "repo": "django",
+        "score": 0.5949534177780151
+      },
+      {
+        "stem": "flask__src__flask__config_py",
+        "repo": "flask",
+        "score": 0.5947436094284058
+      },
+      {
+        "stem": "black__src__black__comments_py",
+        "repo": "black",
+        "score": 0.594619870185852
+      },
+      {
+        "stem": "flask__src__flask__sansio__app_py",
+        "repo": "flask",
+        "score": 0.5927479267120361
+      },
+      {
+        "stem": "django__tests__custom_migration_operations__more_operations_py",
+        "repo": "django",
+        "score": 0.5927474498748779
+      },
+      {
+        "stem": "flask__src__flask__logging_py",
+        "repo": "flask",
+        "score": 0.5914590358734131
+      },
+      {
+        "stem": "numpy__numpy__core__umath_py",
+        "repo": "numpy",
+        "score": 0.5905957221984863
+      },
+      {
+        "stem": "flask__src__flask__cli_py",
+        "repo": "flask",
+        "score": 0.5905247330665588
+      },
+      {
+        "stem": "flask__src__flask__sansio__scaffold_py",
+        "repo": "flask",
+        "score": 0.5879644155502319
+      },
+      {
+        "stem": "flask__src__flask__debughelpers_py",
+        "repo": "flask",
+        "score": 0.5874265432357788
+      },
+      {
+        "stem": "flask__src__flask__views_py",
+        "repo": "flask",
+        "score": 0.5873367190361023
+      },
+      {
+        "stem": "numpy__numpy__polynomial___polybase_py",
+        "repo": "numpy",
+        "score": 0.5870070457458496
+      },
+      {
+        "stem": "numpy__numpy__lib___version_py",
+        "repo": "numpy",
+        "score": 0.5842840671539307
+      },
+      {
+        "stem": "django__django__contrib__contenttypes__forms_py",
+        "repo": "django",
+        "score": 0.582849383354187
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__operations_py",
+        "repo": "django",
+        "score": 0.5805675983428955
+      },
+      {
+        "stem": "flask__src__flask__sessions_py",
+        "repo": "flask",
+        "score": 0.5799844861030579
+      },
+      {
+        "stem": "numpy__numpy___typing___array_like_py",
+        "repo": "numpy",
+        "score": 0.5787268280982971
+      },
+      {
+        "stem": "numpy__numpy___core__defchararray_py",
+        "repo": "numpy",
+        "score": 0.5742220878601074
+      },
+      {
+        "stem": "flask__tests__type_check__typing_error_handler_py",
+        "repo": "flask",
+        "score": 0.572129487991333
+      },
+      {
+        "stem": "flask__src__flask__wrappers_py",
+        "repo": "flask",
+        "score": 0.5704793334007263
+      },
+      {
+        "stem": "numpy__numpy___build_utils__gcc_build_bitness_py",
+        "repo": "numpy",
+        "score": 0.5691202282905579
+      },
+      {
+        "stem": "django__django__template__backends__utils_py",
+        "repo": "django",
+        "score": 0.567791223526001
+      },
+      {
+        "stem": "numpy__numpy__f2py__func2subr_py",
+        "repo": "numpy",
+        "score": 0.5668402314186096
+      },
+      {
+        "stem": "flask__src__flask__helpers_py",
+        "repo": "flask",
+        "score": 0.5663994550704956
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_py",
+        "repo": "black",
+        "score": 0.5650542974472046
+      },
+      {
+        "stem": "black__tests__data__cases__line_ranges_exceeding_end_py",
+        "repo": "black",
+        "score": 0.56463623046875
+      },
+      {
+        "stem": "numpy__numpy___build_utils__process_src_template_py",
+        "repo": "numpy",
+        "score": 0.564397931098938
+      },
+      {
+        "stem": "numpy__numpy___core__umath_py",
+        "repo": "numpy",
+        "score": 0.5642727613449097
+      },
+      {
+        "stem": "numpy__numpy__ma__testutils_py",
+        "repo": "numpy",
+        "score": 0.5613150596618652
+      },
+      {
+        "stem": "black__tests__data__cases__bytes_docstring_py",
+        "repo": "black",
+        "score": 0.5611985921859741
+      },
+      {
+        "stem": "django__tests__cache__models_py",
+        "repo": "django",
+        "score": 0.5607839822769165
+      },
+      {
+        "stem": "numpy__numpy__ma__mrecords_py",
+        "repo": "numpy",
+        "score": 0.560715913772583
+      },
+      {
+        "stem": "numpy__numpy__polynomial__polyutils_py",
+        "repo": "numpy",
+        "score": 0.5603249073028564
+      },
+      {
+        "stem": "flask__src__flask__globals_py",
+        "repo": "flask",
+        "score": 0.5587460994720459
+      },
+      {
+        "stem": "numpy__numpy___typing___scalars_py",
+        "repo": "numpy",
+        "score": 0.5586114525794983
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_polynomial_py",
+        "repo": "numpy",
+        "score": 0.5585057735443115
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__blog_py",
+        "repo": "flask",
+        "score": 0.5584595203399658
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__views_py",
+        "repo": "flask",
+        "score": 0.5580464601516724
+      },
+      {
+        "stem": "numpy__numpy___core___exceptions_py",
+        "repo": "numpy",
+        "score": 0.5553486347198486
+      },
+      {
+        "stem": "black__tests__data__cases__class_methods_new_line_py",
+        "repo": "black",
+        "score": 0.5545617938041687
+      },
+      {
+        "stem": "flask__tests__type_check__typing_route_py",
+        "repo": "flask",
+        "score": 0.5535228252410889
+      },
+      {
+        "stem": "black__src__black__lines_py",
+        "repo": "black",
+        "score": 0.5529544949531555
+      },
+      {
+        "stem": "black__src__black__handle_ipynb_magics_py",
+        "repo": "black",
+        "score": 0.5513756275177002
+      },
+      {
+        "stem": "flask__docs__conf_py",
+        "repo": "flask",
+        "score": 0.5490360260009766
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__features_py",
+        "repo": "django",
+        "score": 0.5461975336074829
+      },
+      {
+        "stem": "numpy__numpy__lib___array_utils_impl_py",
+        "repo": "numpy",
+        "score": 0.5454915761947632
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_complex_py",
+        "repo": "black",
+        "score": 0.5446761846542358
+      },
+      {
+        "stem": "numpy__numpy__lib___utils_impl_py",
+        "repo": "numpy",
+        "score": 0.5438922643661499
+      },
+      {
+        "stem": "numpy__numpy__lib___scimath_impl_py",
+        "repo": "numpy",
+        "score": 0.5432459115982056
+      },
+      {
+        "stem": "numpy__numpy__lib__introspect_py",
+        "repo": "numpy",
+        "score": 0.5428527593612671
+      },
+      {
+        "stem": "flask__src__flask__app_py",
+        "repo": "flask",
+        "score": 0.5417761206626892
+      },
+      {
+        "stem": "django__django__core__management__commands__showmigrations_py",
+        "repo": "django",
+        "score": 0.5416644215583801
+      },
+      {
+        "stem": "django__tests__custom_pk__models_py",
+        "repo": "django",
+        "score": 0.5401623249053955
+      },
+      {
+        "stem": "django__django__contrib__gis__gdal__layer_py",
+        "repo": "django",
+        "score": 0.539909839630127
+      },
+      {
+        "stem": "numpy__numpy___core__code_generators__generate_ufunc_api_py",
+        "repo": "numpy",
+        "score": 0.5388965606689453
+      },
+      {
+        "stem": "flask__examples__javascript__js_example__views_py",
+        "repo": "flask",
+        "score": 0.5384534001350403
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__tasks_py",
+        "repo": "flask",
+        "score": 0.5380287170410156
+      },
+      {
+        "stem": "django__tests__check_framework__urls__cbv_as_view_py",
+        "repo": "django",
+        "score": 0.5332033634185791
+      },
+      {
+        "stem": "django__tests__m2m_multiple__tests_py",
+        "repo": "django",
+        "score": 0.531300961971283
+      },
+      {
+        "stem": "django__tests__syndication_tests__feeds_py",
+        "repo": "django",
+        "score": 0.5304715037345886
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__python2_detection_py",
+        "repo": "black",
+        "score": 0.5299251079559326
+      },
+      {
+        "stem": "numpy__numpy___core___string_helpers_py",
+        "repo": "numpy",
+        "score": 0.529308557510376
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_long_py",
+        "repo": "black",
+        "score": 0.5281697511672974
+      },
+      {
+        "stem": "numpy__numpy__ma__extras_py",
+        "repo": "numpy",
+        "score": 0.5268405079841614
+      },
+      {
+        "stem": "black__tests__data__cases__module_docstring_2_py",
+        "repo": "black",
+        "score": 0.5232115983963013
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__string_quotes_py",
+        "repo": "black",
+        "score": 0.5207669734954834
+      },
+      {
+        "stem": "numpy__numpy___core__cversions_py",
+        "repo": "numpy",
+        "score": 0.5154798030853271
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_long_py",
+        "repo": "black",
+        "score": 0.5140416026115417
+      },
+      {
+        "stem": "black__tests__data__cases__type_comment_syntax_error_py",
+        "repo": "black",
+        "score": 0.5102663040161133
+      },
+      {
+        "stem": "django__django__conf__locale__zh_Hant__formats_py",
+        "repo": "django",
+        "score": 0.507169783115387
+      },
+      {
+        "stem": "django__django__core__cache__utils_py",
+        "repo": "django",
+        "score": 0.5038602352142334
+      },
+      {
+        "stem": "black__tests__data__cases__power_op_spacing_long_py",
+        "repo": "black",
+        "score": 0.5003520250320435
+      },
+      {
+        "stem": "black__tests__data__cases__beginning_backslash_py",
+        "repo": "black",
+        "score": 0.5000215172767639
+      },
+      {
+        "stem": "flask__src__flask__signals_py",
+        "repo": "flask",
+        "score": 0.48897919058799744
+      },
+      {
+        "stem": "django__django__db__models__fields__proxy_py",
+        "repo": "django",
+        "score": 0.4859433174133301
+      },
+      {
+        "stem": "black__tests__data__cases__attribute_access_on_number_literals_py",
+        "repo": "black",
+        "score": 0.4853743314743042
+      },
+      {
+        "stem": "django__tests__async__models_py",
+        "repo": "django",
+        "score": 0.4833682179450989
+      },
+      {
+        "stem": "black__tests__data__cases__comments8_py",
+        "repo": "black",
+        "score": 0.4811897873878479
+      },
+      {
+        "stem": "django__tests__urlpatterns__more_urls_py",
+        "repo": "django",
+        "score": 0.4803195595741272
+      },
+      {
+        "stem": "black__tests__data__cases__fmtskip7_py",
+        "repo": "black",
+        "score": 0.47875919938087463
+      },
+      {
+        "stem": "black__profiling__list_huge_py",
+        "repo": "black",
+        "score": 0.4543612003326416
+      },
+      {
+        "stem": "black__profiling__mix_huge_py",
+        "repo": "black",
+        "score": 0.3727530241012573
+      },
+      {
+        "stem": "black__profiling__mix_big_py",
+        "repo": "black",
+        "score": 0.3727530241012573
+      }
+    ]
+  },
+  "django": {
+    "query_text": "ORM model class definitions with multi-level class-based inheritance and database field declarations",
+    "target_repo": "django",
+    "recall_at_1": 0,
+    "recall_at_5": 1,
+    "ranked": [
+      {
+        "stem": "flask__src__flask__blueprints_py",
+        "repo": "flask",
+        "score": 0.5749151706695557
+      },
+      {
+        "stem": "flask__tests__type_check__typing_route_py",
+        "repo": "flask",
+        "score": 0.5745524168014526
+      },
+      {
+        "stem": "django__django__utils__hashable_py",
+        "repo": "django",
+        "score": 0.5740737318992615
+      },
+      {
+        "stem": "numpy__numpy__linalg__lapack_lite__fortran_py",
+        "repo": "numpy",
+        "score": 0.5702561736106873
+      },
+      {
+        "stem": "flask__tests__type_check__typing_app_decorators_py",
+        "repo": "flask",
+        "score": 0.5571275353431702
+      },
+      {
+        "stem": "django__django__urls__utils_py",
+        "repo": "django",
+        "score": 0.553148627281189
+      },
+      {
+        "stem": "django__django__db__models__constraints_py",
+        "repo": "django",
+        "score": 0.5497795939445496
+      },
+      {
+        "stem": "flask__src__flask__cli_py",
+        "repo": "flask",
+        "score": 0.5487602353096008
+      },
+      {
+        "stem": "django__django__utils__module_loading_py",
+        "repo": "django",
+        "score": 0.5463815927505493
+      },
+      {
+        "stem": "django__django__contrib__messages__api_py",
+        "repo": "django",
+        "score": 0.5433805584907532
+      },
+      {
+        "stem": "numpy__numpy___core__defchararray_py",
+        "repo": "numpy",
+        "score": 0.5386673212051392
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__db_py",
+        "repo": "flask",
+        "score": 0.5381184816360474
+      },
+      {
+        "stem": "flask__src__flask__json__tag_py",
+        "repo": "flask",
+        "score": 0.5363929271697998
+      },
+      {
+        "stem": "flask__tests__type_check__typing_error_handler_py",
+        "repo": "flask",
+        "score": 0.536300778388977
+      },
+      {
+        "stem": "flask__src__flask__wrappers_py",
+        "repo": "flask",
+        "score": 0.5359714031219482
+      },
+      {
+        "stem": "numpy__numpy___core___exceptions_py",
+        "repo": "numpy",
+        "score": 0.5326073169708252
+      },
+      {
+        "stem": "django__tests__m2o_recursive__tests_py",
+        "repo": "django",
+        "score": 0.5316333770751953
+      },
+      {
+        "stem": "black__tests__data__cases__pep_572_py310_py",
+        "repo": "black",
+        "score": 0.5308239459991455
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__views_py",
+        "repo": "flask",
+        "score": 0.5303391218185425
+      },
+      {
+        "stem": "black__src__black__report_py",
+        "repo": "black",
+        "score": 0.526980996131897
+      },
+      {
+        "stem": "numpy__numpy___typing___array_like_py",
+        "repo": "numpy",
+        "score": 0.5263792872428894
+      },
+      {
+        "stem": "django__django__contrib__contenttypes__forms_py",
+        "repo": "django",
+        "score": 0.5241684913635254
+      },
+      {
+        "stem": "black__src__black__concurrency_py",
+        "repo": "black",
+        "score": 0.5213949680328369
+      },
+      {
+        "stem": "flask__src__flask__logging_py",
+        "repo": "flask",
+        "score": 0.5209604501724243
+      },
+      {
+        "stem": "flask__src__flask__globals_py",
+        "repo": "flask",
+        "score": 0.5173282623291016
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_ma_py",
+        "repo": "numpy",
+        "score": 0.5165252685546875
+      },
+      {
+        "stem": "flask__src__flask__sansio__scaffold_py",
+        "repo": "flask",
+        "score": 0.5163432955741882
+      },
+      {
+        "stem": "flask__src__flask__config_py",
+        "repo": "flask",
+        "score": 0.5149414539337158
+      },
+      {
+        "stem": "django__tests__constraints__models_py",
+        "repo": "django",
+        "score": 0.5115232467651367
+      },
+      {
+        "stem": "numpy__numpy___core__code_generators__generate_ufunc_api_py",
+        "repo": "numpy",
+        "score": 0.5114366412162781
+      },
+      {
+        "stem": "black__tests__data__cases__class_methods_new_line_py",
+        "repo": "black",
+        "score": 0.5067970752716064
+      },
+      {
+        "stem": "black__src__black__lines_py",
+        "repo": "black",
+        "score": 0.5044726133346558
+      },
+      {
+        "stem": "django__tests__custom_pk__models_py",
+        "repo": "django",
+        "score": 0.5018831491470337
+      },
+      {
+        "stem": "flask__src__flask__helpers_py",
+        "repo": "flask",
+        "score": 0.5016297101974487
+      },
+      {
+        "stem": "black__src__black__comments_py",
+        "repo": "black",
+        "score": 0.49960336089134216
+      },
+      {
+        "stem": "flask__src__flask__sessions_py",
+        "repo": "flask",
+        "score": 0.49952366948127747
+      },
+      {
+        "stem": "numpy__numpy__polynomial___polybase_py",
+        "repo": "numpy",
+        "score": 0.4991858899593353
+      },
+      {
+        "stem": "numpy__numpy___build_utils__process_src_template_py",
+        "repo": "numpy",
+        "score": 0.4982507824897766
+      },
+      {
+        "stem": "numpy__numpy__polynomial__polyutils_py",
+        "repo": "numpy",
+        "score": 0.49723902344703674
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__operations_py",
+        "repo": "django",
+        "score": 0.4970330595970154
+      },
+      {
+        "stem": "flask__examples__javascript__js_example__views_py",
+        "repo": "flask",
+        "score": 0.4969739615917206
+      },
+      {
+        "stem": "numpy__numpy__f2py__func2subr_py",
+        "repo": "numpy",
+        "score": 0.4967026114463806
+      },
+      {
+        "stem": "flask__src__flask__testing_py",
+        "repo": "flask",
+        "score": 0.49404990673065186
+      },
+      {
+        "stem": "django__django__contrib__admin__checks_py",
+        "repo": "django",
+        "score": 0.4935593008995056
+      },
+      {
+        "stem": "numpy__numpy___build_utils__gcc_build_bitness_py",
+        "repo": "numpy",
+        "score": 0.4935576021671295
+      },
+      {
+        "stem": "black__tests__data__cases__bytes_docstring_py",
+        "repo": "black",
+        "score": 0.49217426776885986
+      },
+      {
+        "stem": "numpy__numpy__ma__mrecords_py",
+        "repo": "numpy",
+        "score": 0.4911641776561737
+      },
+      {
+        "stem": "numpy__numpy__core__umath_py",
+        "repo": "numpy",
+        "score": 0.4903661608695984
+      },
+      {
+        "stem": "numpy__numpy__lib___version_py",
+        "repo": "numpy",
+        "score": 0.48945239186286926
+      },
+      {
+        "stem": "flask__docs__conf_py",
+        "repo": "flask",
+        "score": 0.4893317222595215
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__blog_py",
+        "repo": "flask",
+        "score": 0.48609867691993713
+      },
+      {
+        "stem": "django__django__contrib__gis__gdal__layer_py",
+        "repo": "django",
+        "score": 0.484407901763916
+      },
+      {
+        "stem": "numpy__numpy___core__cversions_py",
+        "repo": "numpy",
+        "score": 0.48377978801727295
+      },
+      {
+        "stem": "django__django__core__cache__utils_py",
+        "repo": "django",
+        "score": 0.48331570625305176
+      },
+      {
+        "stem": "django__tests__check_framework__urls__cbv_as_view_py",
+        "repo": "django",
+        "score": 0.48170462250709534
+      },
+      {
+        "stem": "django__django__conf__locale__zh_Hant__formats_py",
+        "repo": "django",
+        "score": 0.48033180832862854
+      },
+      {
+        "stem": "django__tests__custom_migration_operations__more_operations_py",
+        "repo": "django",
+        "score": 0.4797818958759308
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_polynomial_py",
+        "repo": "numpy",
+        "score": 0.4763880968093872
+      },
+      {
+        "stem": "flask__src__flask__debughelpers_py",
+        "repo": "flask",
+        "score": 0.47146129608154297
+      },
+      {
+        "stem": "black__tests__data__cases__module_docstring_2_py",
+        "repo": "black",
+        "score": 0.4704558849334717
+      },
+      {
+        "stem": "flask__src__flask__sansio__app_py",
+        "repo": "flask",
+        "score": 0.4688669443130493
+      },
+      {
+        "stem": "numpy__numpy__ma__testutils_py",
+        "repo": "numpy",
+        "score": 0.46648848056793213
+      },
+      {
+        "stem": "numpy__numpy___typing___scalars_py",
+        "repo": "numpy",
+        "score": 0.46497905254364014
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_py",
+        "repo": "black",
+        "score": 0.4629451036453247
+      },
+      {
+        "stem": "django__django__core__management__commands__showmigrations_py",
+        "repo": "django",
+        "score": 0.46274492144584656
+      },
+      {
+        "stem": "django__django__template__backends__utils_py",
+        "repo": "django",
+        "score": 0.460844486951828
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_complex_py",
+        "repo": "black",
+        "score": 0.4601788818836212
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__features_py",
+        "repo": "django",
+        "score": 0.4598194360733032
+      },
+      {
+        "stem": "django__tests__cache__models_py",
+        "repo": "django",
+        "score": 0.45822009444236755
+      },
+      {
+        "stem": "numpy__numpy__lib___array_utils_impl_py",
+        "repo": "numpy",
+        "score": 0.45752835273742676
+      },
+      {
+        "stem": "numpy__numpy__lib___utils_impl_py",
+        "repo": "numpy",
+        "score": 0.4494452178478241
+      },
+      {
+        "stem": "numpy__numpy__lib__introspect_py",
+        "repo": "numpy",
+        "score": 0.44633209705352783
+      },
+      {
+        "stem": "flask__src__flask__views_py",
+        "repo": "flask",
+        "score": 0.44626671075820923
+      },
+      {
+        "stem": "django__tests__syndication_tests__feeds_py",
+        "repo": "django",
+        "score": 0.44349604845046997
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__tasks_py",
+        "repo": "flask",
+        "score": 0.4433130621910095
+      },
+      {
+        "stem": "numpy__numpy___core___string_helpers_py",
+        "repo": "numpy",
+        "score": 0.4426977038383484
+      },
+      {
+        "stem": "black__src__black__handle_ipynb_magics_py",
+        "repo": "black",
+        "score": 0.4413982033729553
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_long_py",
+        "repo": "black",
+        "score": 0.44138944149017334
+      },
+      {
+        "stem": "flask__src__flask__app_py",
+        "repo": "flask",
+        "score": 0.4396149814128876
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__string_quotes_py",
+        "repo": "black",
+        "score": 0.43506649136543274
+      },
+      {
+        "stem": "numpy__numpy__lib___scimath_impl_py",
+        "repo": "numpy",
+        "score": 0.4337010383605957
+      },
+      {
+        "stem": "black__tests__data__cases__line_ranges_exceeding_end_py",
+        "repo": "black",
+        "score": 0.43052494525909424
+      },
+      {
+        "stem": "flask__src__flask__signals_py",
+        "repo": "flask",
+        "score": 0.4293762445449829
+      },
+      {
+        "stem": "numpy__numpy___core__umath_py",
+        "repo": "numpy",
+        "score": 0.4272705912590027
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__python2_detection_py",
+        "repo": "black",
+        "score": 0.427001029253006
+      },
+      {
+        "stem": "django__tests__urlpatterns__more_urls_py",
+        "repo": "django",
+        "score": 0.42143166065216064
+      },
+      {
+        "stem": "black__tests__data__cases__type_comment_syntax_error_py",
+        "repo": "black",
+        "score": 0.41979891061782837
+      },
+      {
+        "stem": "numpy__numpy__ma__extras_py",
+        "repo": "numpy",
+        "score": 0.41531866788864136
+      },
+      {
+        "stem": "django__django__db__models__fields__proxy_py",
+        "repo": "django",
+        "score": 0.4145572781562805
+      },
+      {
+        "stem": "django__tests__m2m_multiple__tests_py",
+        "repo": "django",
+        "score": 0.41345661878585815
+      },
+      {
+        "stem": "black__tests__data__cases__beginning_backslash_py",
+        "repo": "black",
+        "score": 0.4118964374065399
+      },
+      {
+        "stem": "black__tests__data__cases__attribute_access_on_number_literals_py",
+        "repo": "black",
+        "score": 0.41056233644485474
+      },
+      {
+        "stem": "django__tests__async__models_py",
+        "repo": "django",
+        "score": 0.41044649481773376
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_long_py",
+        "repo": "black",
+        "score": 0.40457335114479065
+      },
+      {
+        "stem": "black__profiling__list_huge_py",
+        "repo": "black",
+        "score": 0.39230644702911377
+      },
+      {
+        "stem": "black__tests__data__cases__comments8_py",
+        "repo": "black",
+        "score": 0.38987186551094055
+      },
+      {
+        "stem": "black__tests__data__cases__fmtskip7_py",
+        "repo": "black",
+        "score": 0.37714242935180664
+      },
+      {
+        "stem": "black__tests__data__cases__power_op_spacing_long_py",
+        "repo": "black",
+        "score": 0.36232790350914
+      },
+      {
+        "stem": "black__profiling__mix_huge_py",
+        "repo": "black",
+        "score": 0.3200525641441345
+      },
+      {
+        "stem": "black__profiling__mix_big_py",
+        "repo": "black",
+        "score": 0.3200525641441345
+      }
+    ]
+  },
+  "numpy": {
+    "query_text": "Dense low-level numerical computation with tightly packed array indexing and mathematical operations",
+    "target_repo": "numpy",
+    "recall_at_1": 1,
+    "recall_at_5": 1,
+    "ranked": [
+      {
+        "stem": "numpy__numpy___core__defchararray_py",
+        "repo": "numpy",
+        "score": 0.6632596254348755
+      },
+      {
+        "stem": "django__django__contrib__messages__api_py",
+        "repo": "django",
+        "score": 0.658876359462738
+      },
+      {
+        "stem": "django__django__db__models__constraints_py",
+        "repo": "django",
+        "score": 0.6548787355422974
+      },
+      {
+        "stem": "django__django__core__management__commands__showmigrations_py",
+        "repo": "django",
+        "score": 0.6506897807121277
+      },
+      {
+        "stem": "numpy__numpy___build_utils__gcc_build_bitness_py",
+        "repo": "numpy",
+        "score": 0.6501964330673218
+      },
+      {
+        "stem": "flask__src__flask__sansio__scaffold_py",
+        "repo": "flask",
+        "score": 0.6499986052513123
+      },
+      {
+        "stem": "flask__src__flask__sessions_py",
+        "repo": "flask",
+        "score": 0.6475522518157959
+      },
+      {
+        "stem": "numpy__numpy__linalg__lapack_lite__fortran_py",
+        "repo": "numpy",
+        "score": 0.6460840702056885
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__db_py",
+        "repo": "flask",
+        "score": 0.6455886960029602
+      },
+      {
+        "stem": "flask__src__flask__json__tag_py",
+        "repo": "flask",
+        "score": 0.6435672044754028
+      },
+      {
+        "stem": "flask__src__flask__globals_py",
+        "repo": "flask",
+        "score": 0.6409269571304321
+      },
+      {
+        "stem": "django__django__utils__module_loading_py",
+        "repo": "django",
+        "score": 0.640662670135498
+      },
+      {
+        "stem": "flask__tests__type_check__typing_app_decorators_py",
+        "repo": "flask",
+        "score": 0.6403301954269409
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_ma_py",
+        "repo": "numpy",
+        "score": 0.6388948559761047
+      },
+      {
+        "stem": "django__django__contrib__contenttypes__forms_py",
+        "repo": "django",
+        "score": 0.6388130187988281
+      },
+      {
+        "stem": "django__tests__m2o_recursive__tests_py",
+        "repo": "django",
+        "score": 0.6378755569458008
+      },
+      {
+        "stem": "django__django__urls__utils_py",
+        "repo": "django",
+        "score": 0.6364341974258423
+      },
+      {
+        "stem": "flask__src__flask__blueprints_py",
+        "repo": "flask",
+        "score": 0.6361854672431946
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__operations_py",
+        "repo": "django",
+        "score": 0.6349880695343018
+      },
+      {
+        "stem": "django__django__contrib__gis__gdal__layer_py",
+        "repo": "django",
+        "score": 0.632590115070343
+      },
+      {
+        "stem": "numpy__numpy___typing___scalars_py",
+        "repo": "numpy",
+        "score": 0.6309134364128113
+      },
+      {
+        "stem": "flask__tests__type_check__typing_route_py",
+        "repo": "flask",
+        "score": 0.6307856440544128
+      },
+      {
+        "stem": "numpy__numpy___typing___array_like_py",
+        "repo": "numpy",
+        "score": 0.6306062936782837
+      },
+      {
+        "stem": "flask__src__flask__wrappers_py",
+        "repo": "flask",
+        "score": 0.6299573183059692
+      },
+      {
+        "stem": "flask__src__flask__debughelpers_py",
+        "repo": "flask",
+        "score": 0.6275257468223572
+      },
+      {
+        "stem": "flask__examples__tutorial__flaskr__blog_py",
+        "repo": "flask",
+        "score": 0.6255066394805908
+      },
+      {
+        "stem": "black__src__black__handle_ipynb_magics_py",
+        "repo": "black",
+        "score": 0.6254805326461792
+      },
+      {
+        "stem": "django__django__utils__hashable_py",
+        "repo": "django",
+        "score": 0.6239402294158936
+      },
+      {
+        "stem": "flask__src__flask__testing_py",
+        "repo": "flask",
+        "score": 0.6235713958740234
+      },
+      {
+        "stem": "black__tests__data__cases__bytes_docstring_py",
+        "repo": "black",
+        "score": 0.6233173608779907
+      },
+      {
+        "stem": "numpy__numpy___core___exceptions_py",
+        "repo": "numpy",
+        "score": 0.6222265958786011
+      },
+      {
+        "stem": "numpy__numpy___core__umath_py",
+        "repo": "numpy",
+        "score": 0.6208192110061646
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__views_py",
+        "repo": "flask",
+        "score": 0.6196732521057129
+      },
+      {
+        "stem": "black__tests__data__cases__pep_572_py310_py",
+        "repo": "black",
+        "score": 0.6188976764678955
+      },
+      {
+        "stem": "flask__docs__conf_py",
+        "repo": "flask",
+        "score": 0.6170336604118347
+      },
+      {
+        "stem": "django__django__contrib__admin__checks_py",
+        "repo": "django",
+        "score": 0.6165722608566284
+      },
+      {
+        "stem": "numpy__numpy___build_utils__process_src_template_py",
+        "repo": "numpy",
+        "score": 0.615638256072998
+      },
+      {
+        "stem": "black__tests__data__cases__class_methods_new_line_py",
+        "repo": "black",
+        "score": 0.614990234375
+      },
+      {
+        "stem": "django__tests__custom_pk__models_py",
+        "repo": "django",
+        "score": 0.6122167706489563
+      },
+      {
+        "stem": "django__tests__constraints__models_py",
+        "repo": "django",
+        "score": 0.6100742220878601
+      },
+      {
+        "stem": "flask__src__flask__config_py",
+        "repo": "flask",
+        "score": 0.609263002872467
+      },
+      {
+        "stem": "numpy__numpy___core___string_helpers_py",
+        "repo": "numpy",
+        "score": 0.6090425252914429
+      },
+      {
+        "stem": "flask__src__flask__logging_py",
+        "repo": "flask",
+        "score": 0.6088395118713379
+      },
+      {
+        "stem": "numpy__numpy__polynomial___polybase_py",
+        "repo": "numpy",
+        "score": 0.6071819067001343
+      },
+      {
+        "stem": "numpy__numpy___core__code_generators__generate_ufunc_api_py",
+        "repo": "numpy",
+        "score": 0.6067126989364624
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_complex_py",
+        "repo": "black",
+        "score": 0.6063946485519409
+      },
+      {
+        "stem": "django__tests__syndication_tests__feeds_py",
+        "repo": "django",
+        "score": 0.6054218411445618
+      },
+      {
+        "stem": "black__src__black__report_py",
+        "repo": "black",
+        "score": 0.6053604483604431
+      },
+      {
+        "stem": "flask__src__flask__cli_py",
+        "repo": "flask",
+        "score": 0.6047358512878418
+      },
+      {
+        "stem": "numpy__numpy__f2py__func2subr_py",
+        "repo": "numpy",
+        "score": 0.6028834581375122
+      },
+      {
+        "stem": "black__src__black__comments_py",
+        "repo": "black",
+        "score": 0.6026392579078674
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_py",
+        "repo": "black",
+        "score": 0.6022369265556335
+      },
+      {
+        "stem": "django__tests__custom_migration_operations__more_operations_py",
+        "repo": "django",
+        "score": 0.6010591983795166
+      },
+      {
+        "stem": "black__src__black__lines_py",
+        "repo": "black",
+        "score": 0.6008594036102295
+      },
+      {
+        "stem": "django__django__template__backends__utils_py",
+        "repo": "django",
+        "score": 0.5993942618370056
+      },
+      {
+        "stem": "numpy__numpy___core__cversions_py",
+        "repo": "numpy",
+        "score": 0.5969429016113281
+      },
+      {
+        "stem": "flask__src__flask__helpers_py",
+        "repo": "flask",
+        "score": 0.5961150527000427
+      },
+      {
+        "stem": "flask__src__flask__sansio__app_py",
+        "repo": "flask",
+        "score": 0.593915581703186
+      },
+      {
+        "stem": "flask__src__flask__app_py",
+        "repo": "flask",
+        "score": 0.5921320915222168
+      },
+      {
+        "stem": "django__tests__m2m_multiple__tests_py",
+        "repo": "django",
+        "score": 0.5909959077835083
+      },
+      {
+        "stem": "numpy__numpy__ma__mrecords_py",
+        "repo": "numpy",
+        "score": 0.590767502784729
+      },
+      {
+        "stem": "django__django__core__cache__utils_py",
+        "repo": "django",
+        "score": 0.5863258242607117
+      },
+      {
+        "stem": "django__tests__check_framework__urls__cbv_as_view_py",
+        "repo": "django",
+        "score": 0.5860466957092285
+      },
+      {
+        "stem": "numpy__benchmarks__benchmarks__bench_polynomial_py",
+        "repo": "numpy",
+        "score": 0.5855439901351929
+      },
+      {
+        "stem": "numpy__numpy__core__umath_py",
+        "repo": "numpy",
+        "score": 0.5845898389816284
+      },
+      {
+        "stem": "flask__examples__javascript__js_example__views_py",
+        "repo": "flask",
+        "score": 0.5845791101455688
+      },
+      {
+        "stem": "numpy__numpy__lib___array_utils_impl_py",
+        "repo": "numpy",
+        "score": 0.584293007850647
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__string_quotes_py",
+        "repo": "black",
+        "score": 0.581427812576294
+      },
+      {
+        "stem": "black__tests__data__cases__preview_simplify_power_operator_hugging_long_py",
+        "repo": "black",
+        "score": 0.5809749364852905
+      },
+      {
+        "stem": "black__tests__data__cases__module_docstring_2_py",
+        "repo": "black",
+        "score": 0.5786280632019043
+      },
+      {
+        "stem": "flask__tests__type_check__typing_error_handler_py",
+        "repo": "flask",
+        "score": 0.5771573781967163
+      },
+      {
+        "stem": "django__django__contrib__gis__db__backends__mysql__features_py",
+        "repo": "django",
+        "score": 0.5762916207313538
+      },
+      {
+        "stem": "black__src__black__concurrency_py",
+        "repo": "black",
+        "score": 0.576093316078186
+      },
+      {
+        "stem": "numpy__numpy__polynomial__polyutils_py",
+        "repo": "numpy",
+        "score": 0.5745240449905396
+      },
+      {
+        "stem": "django__tests__cache__models_py",
+        "repo": "django",
+        "score": 0.5741516351699829
+      },
+      {
+        "stem": "numpy__numpy__lib__introspect_py",
+        "repo": "numpy",
+        "score": 0.5738159418106079
+      },
+      {
+        "stem": "numpy__numpy__ma__testutils_py",
+        "repo": "numpy",
+        "score": 0.5711102485656738
+      },
+      {
+        "stem": "numpy__numpy__lib___version_py",
+        "repo": "numpy",
+        "score": 0.5701528191566467
+      },
+      {
+        "stem": "black__tests__data__cases__attribute_access_on_number_literals_py",
+        "repo": "black",
+        "score": 0.5689117312431335
+      },
+      {
+        "stem": "numpy__numpy__ma__extras_py",
+        "repo": "numpy",
+        "score": 0.5641505718231201
+      },
+      {
+        "stem": "black__profiling__list_huge_py",
+        "repo": "black",
+        "score": 0.5637476444244385
+      },
+      {
+        "stem": "flask__src__flask__signals_py",
+        "repo": "flask",
+        "score": 0.563084065914154
+      },
+      {
+        "stem": "django__django__db__models__fields__proxy_py",
+        "repo": "django",
+        "score": 0.5623884201049805
+      },
+      {
+        "stem": "numpy__numpy__lib___scimath_impl_py",
+        "repo": "numpy",
+        "score": 0.5620560050010681
+      },
+      {
+        "stem": "django__django__conf__locale__zh_Hant__formats_py",
+        "repo": "django",
+        "score": 0.5605605244636536
+      },
+      {
+        "stem": "flask__src__flask__views_py",
+        "repo": "flask",
+        "score": 0.5596634149551392
+      },
+      {
+        "stem": "black__tests__data__cases__beginning_backslash_py",
+        "repo": "black",
+        "score": 0.5593187808990479
+      },
+      {
+        "stem": "django__tests__async__models_py",
+        "repo": "django",
+        "score": 0.5565387010574341
+      },
+      {
+        "stem": "black__tests__data__cases__pattern_matching_long_py",
+        "repo": "black",
+        "score": 0.5563292503356934
+      },
+      {
+        "stem": "numpy__numpy__lib___utils_impl_py",
+        "repo": "numpy",
+        "score": 0.5535988807678223
+      },
+      {
+        "stem": "black__tests__data__cases__line_ranges_exceeding_end_py",
+        "repo": "black",
+        "score": 0.5515997409820557
+      },
+      {
+        "stem": "black__tests__data__cases__power_op_spacing_long_py",
+        "repo": "black",
+        "score": 0.5513640642166138
+      },
+      {
+        "stem": "flask__examples__celery__src__task_app__tasks_py",
+        "repo": "flask",
+        "score": 0.5500470399856567
+      },
+      {
+        "stem": "black__tests__data__cases__fmtskip7_py",
+        "repo": "black",
+        "score": 0.5468689203262329
+      },
+      {
+        "stem": "django__tests__urlpatterns__more_urls_py",
+        "repo": "django",
+        "score": 0.5374930500984192
+      },
+      {
+        "stem": "black__tests__data__miscellaneous__python2_detection_py",
+        "repo": "black",
+        "score": 0.5259004831314087
+      },
+      {
+        "stem": "black__tests__data__cases__comments8_py",
+        "repo": "black",
+        "score": 0.5144806504249573
+      },
+      {
+        "stem": "black__tests__data__cases__type_comment_syntax_error_py",
+        "repo": "black",
+        "score": 0.5082825422286987
+      },
+      {
+        "stem": "black__profiling__mix_huge_py",
+        "repo": "black",
+        "score": 0.49786508083343506
+      },
+      {
+        "stem": "black__profiling__mix_big_py",
+        "repo": "black",
+        "score": 0.49786508083343506
+      }
+    ]
+  }
+}
