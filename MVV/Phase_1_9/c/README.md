@@ -1,14 +1,27 @@
-# Phase 1.9c — Large-Scale Alignment Training
+# Phase 1.9c — Large-Scale Alignment Training (8,000-Sample Scale-Up)
 
-## Objective
+## Overview
 
-Scale the ConvRoPEProjector alignment training from the ~500-sample subsample used in
-Phase 2 to the full ~8,980-sample manifest (`MVV/Phase_1_1/data_mvv/manifest.jsonl`),
-training for 5 epochs.
+Phase 1.9c is the large-scale alignment test: scaling projector-only training from 500 samples
+(Phase 1.9b / Phase 2 diagnostic) to the full ~8,980-sample manifest for 1 epoch, then running
+inference to determine whether 16x more data is sufficient to override the LLM's RLHF priors.
 
-The primary target is **GHOSTING emergence**: outputs where Python structural keywords
-(`def`, `class`, `import`) are correctly placed and indentation roughly matches the
-reference, even if token-level accuracy remains low.
+The projector initializes from Phase 2's `best_aligned.pt` (val_loss=1.3918), which itself was
+trained for 2 epochs on 500 samples starting from a keyword-classification baseline.
+
+---
+
+## Training Sequence
+
+Two runs led to this evaluation:
+
+| Run | Dataset | Epochs | Init | Final val_loss |
+|---|---|---|---|---|
+| Phase 2 diagnostic | ~500 train samples | 2 | Phase 1.9a BCE checkpoint | **1.3918** |
+| Phase 1.9c scale-up | ~8,082 train samples (90/10 split of 8,980) | 1 | `Phase_2/checkpoints/best_aligned.pt` | (see training log) |
+
+The Phase 2 diagnostic established the projector checkpoint used as Phase 1.9c's starting point.
+Phase 1.9c trains only the projector; the LLM backbone remains strictly frozen throughout.
 
 ---
 
@@ -29,70 +42,108 @@ Only the **ConvRoPEProjector** is trained. The LLM is strictly frozen.
 
 ---
 
-## Initialization
-
-- Projector weights loaded from `MVV/Phase_2/checkpoints/best_aligned.pt`
-- Phase 2 trained on ~500 samples for 2 epochs, achieved **val_loss = 1.392**
-- No LoRA; projector-only training continues from Phase 2's best checkpoint
-
----
-
 ## Training Configuration
 
 | Parameter | Value |
 |---|---|
 | Manifest | `MVV/Phase_1_1/data_mvv/manifest.jsonl` (~8,980 entries) |
 | Train/Val split | 90/10, fixed seed=42 |
-| Epochs | 5 |
+| Train samples | ~8,082 |
+| Val samples | ~898 |
+| Epochs | 1 |
 | Batch size | 1 |
 | Gradient accumulation | 4 steps (effective batch = 4) |
 | Learning rate | 1e-5 |
 | Warmup steps | 100 |
 | Max text tokens | 512 |
+| Vision tokens masked | First 256 labels set to -100 |
+| Position IDs | Explicit, dynamic padding |
 | LLM quantization | 8-bit (BitsAndBytes) |
 | GPU | 1× V100 (dgx partition) |
-| PYTORCH_CUDA_ALLOC_CONF | expandable_segments:True |
+| Projector init | `MVV/Phase_2/checkpoints/best_aligned.pt` |
 
 ---
 
-## Results
+## Inference Results (20-Sample Test Set)
 
-**Status: Training in progress (2026-03-16)**
-
-Job submitted via `sbatch MVV/Phase_1_9/c/run_1_9c.sh`. Results will be filled once training completes.
-
-### Training Log
-
-| Epoch | Train Loss | Val Loss | Best? |
-|---|---|---|---|
-| 1 | — | — | — |
-| 2 | — | — | — |
-| 3 | — | — | — |
-| 4 | — | — | — |
-| 5 | — | — | — |
-
-### Inference Evaluation (20 samples, seed=42)
+Evaluated with `infer_1_9c.py` on 20 held-out samples, seed=42.
 
 | Metric | Value |
 |---|---|
-| Mean Edit Distance | — |
-| Word Salad | — |
-| Hallucination | — |
-| Ghosting | — |
-| Other | — |
+| Samples evaluated | 20 |
+| Mean Edit Distance | **0.980** |
+| Word Salad | 0 |
+| Hallucination | 0 |
+| Ghosting | 0 |
+| Other | **20** |
 
-Full inference report: `results/reconstruction_report.md`
+All 20 samples classified as **OTHER** — coherent, instruction-following responses that do not
+reconstruct the source code.
+
+### Comparison vs. Phase 1.9b
+
+| | Phase 1.9b Run 2 (500 samples) | Phase 1.9c (8,082 samples) |
+|---|---|---|
+| Mean Edit Distance | 0.981 | 0.980 |
+| Ghosting count | 0 / 20 | 0 / 20 |
+| Failure mode | Clarifying questions / generic code | Clarifying questions / generic code |
+
+Edit distance improved by 0.001 despite a 16x increase in training data — effectively no change.
 
 ---
 
-## Success Criterion
+## Observed Failure Patterns
 
-**GHOSTING** is the target outcome: outputs where structural keywords (`def`, `class`,
-`import`) appear in plausible positions and indentation roughly matches the reference
-file, even if exact token reconstruction remains poor (edit_distance 0.3–0.8).
+The LLM consistently ignores the visual prefix and defaults to conversational behavior. Patterns
+observed across all 20 samples:
 
-A result is considered successful if at least **3 out of 20** sampled outputs are
-classified as GHOSTING (vs. 0 in Phase 1.9b baseline).
+| Pattern | Example |
+|---|---|
+| Prompt regurgitation | Output begins with the system prompt verbatim |
+| Embedding explanation | "The following 256 embeddings represent a high-resolution image..." |
+| Clarification loop | "I'm unable to reconstruct... I can provide a summary..." |
+| Token repetition | `code\ncode\ncode\n...` (40+ repetitions) |
+| Generic typing imports | `from typing import List, Optional, Any, Union, Callable, cast` |
+| Tokenization artifact | `mathboldmathboldmathbold...` (repeated 100+ times) |
+| Placeholder loop | `def main():\n-    def main():\n...` |
+
+---
+
+## Diagnosis — The RLHF Override Problem
+
+**Root cause:** DeepSeek-Coder-V2-Lite-**Instruct** has been fine-tuned with RLHF to behave as
+a conversational assistant. When 256 "alien" visual tokens are prepended, the frozen LLM's RLHF
+prior dominates: it interprets the opaque tokens as an ambiguous instruction and responds with
+safe conversational behavior (explaining, asking for clarification, looping on generic code).
+
+**Why scaling failed:** The projector is the only trainable component. It must learn to produce
+256 token embeddings that, when read by a frozen RLHF-tuned LLM, reliably override years of
+instruction-following conditioning. This is not achievable with a projector-only approach
+regardless of dataset scale — the bottleneck is the frozen backbone, not the adapter.
+
+**Evidence:**
+- Phase 1.9b (500 samples): mean edit distance 0.981, 0/20 ghosting
+- Phase 1.9c (8,082 samples, 16x scale): mean edit distance 0.980, 0/20 ghosting
+- The failure mode is identical across both runs and both projector checkpoints
+
+---
+
+## Conclusion and Path to Phase 3
+
+Phase 1.9c is a clean negative result. It confirms that:
+
+1. **Projector-only training cannot override a frozen RLHF backbone**, regardless of data scale.
+2. **Generative alignment requires LoRA unfreezing** of the LLM — the standard LLaVA approach
+   (joint projector + backbone fine-tuning).
+3. **The bottleneck is architectural, not data-scale.** 16x more data produced ~0% improvement.
+
+However, the contrastive evaluation (Phase 1.10) showed **Recall@5 = 100% zero-shot** on the
+retrieval task, demonstrating that the projector's embedding space has learned meaningful
+structural representations as a byproduct of generation training — even without generative
+decoding succeeding.
+
+Phase 1.9c's failure directly motivates Phase 3: joint LoRA + projector training where the LLM
+backbone is partially unfrozen and can be adapted to interpret visual token prefixes.
 
 ---
 
@@ -100,10 +151,10 @@ classified as GHOSTING (vs. 0 in Phase 1.9b baseline).
 
 | File | Description |
 |---|---|
-| `train_1_9c.py` | Training script (full dataset, 5 epochs) |
+| `train_1_9c.py` | Training script (full dataset, 1 epoch) |
 | `infer_1_9c.py` | Inference evaluation (20 samples, failure classification) |
 | `run_1_9c.sh` | SLURM job: trains then infers sequentially |
 | `checkpoints/best.pt` | Best projector checkpoint (lowest val_loss) |
 | `checkpoints/epoch_N.pt` | Per-epoch projector checkpoints |
 | `results/training_log.jsonl` | Per-epoch metrics (appended during training) |
-| `results/reconstruction_report.md` | Inference evaluation report |
+| `results/reconstruction_report.md` | Full 20-sample inference report (2026-03-17) |
