@@ -279,10 +279,13 @@ A three-phase hybrid workflow combining vision and text:
    - **Result:** class=0.98, import=0.96, def=0.93. Proves character-level data survives 32×32→16×16 compression.
    - **Checkpoint:** MVV/Phase_1_9/checkpoints/best.pt
 
-1. **🔲 TODO (2026-03-13 session 13):** Phase 2 — submit diagnostic alignment run
-   - `sbatch MVV/Phase_2/run_phase2.sh` — 500 train samples, 2 epochs, batch=1
-   - Watch val_loss: <8.0 = alignment working, <3.0 = target
-   - If passes: re-run with all 8082 train samples
+1. **🔄 IN PROGRESS (2026-03-16 session 14):** Phase 1.9c — Large-scale alignment training
+   - Job submitted: `sbatch MVV/Phase_1_9/c/run_1_9c.sh` — ~8,980 samples, 5 epochs, batch=1, lr=1e-5
+   - Init from Phase 2 best_aligned.pt (val_loss=1.392, 500 samples)
+   - Success criterion: ≥3/20 inference samples classified as GHOSTING
+   - When done: fill results table in MVV/Phase_1_9/c/README.md, run infer_1_9c.py
+
+1. **🔲 TODO (next):** Phase 2 full-scale training (if 1.9c passes ghosting criterion)
 
 1. **✅ DONE (2026-03-13 session 13):** Phase 2 train_alignment.py built + OOM fixed
    - Architecture: frozen DeepSeek 8-bit + unfrozen ConvRoPEProjector (lr=1e-5, warmup=100)
