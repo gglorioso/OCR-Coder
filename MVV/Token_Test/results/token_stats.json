@@ -1,0 +1,48 @@
+{
+  "manifest": "/home/ad.msoe.edu/gloriosog/CoderOCR/OCR-Coder/MVV/Phase_1_9/a/data/ground_truth.jsonl",
+  "sample_size": 500,
+  "random_seed": 42,
+  "skipped": 0,
+  "stats": {
+    "min": 41,
+    "max": 2749,
+    "mean": 322.42,
+    "median": 323.0,
+    "std": 159.92,
+    "p95": 529.1
+  },
+  "histogram": [
+    {
+      "bucket": "0\u2013100",
+      "count": 24
+    },
+    {
+      "bucket": "100\u2013200",
+      "count": 48
+    },
+    {
+      "bucket": "200\u2013500",
+      "count": 394
+    },
+    {
+      "bucket": "500\u20131k",
+      "count": 33
+    },
+    {
+      "bucket": "1k\u20132k",
+      "count": 0
+    },
+    {
+      "bucket": "2k\u20135k",
+      "count": 1
+    },
+    {
+      "bucket": "5k\u201310k",
+      "count": 0
+    },
+    {
+      "bucket": "10k+",
+      "count": 0
+    }
+  ]
+}
