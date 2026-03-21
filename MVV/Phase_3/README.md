@@ -9,6 +9,11 @@ end-to-end on a code generation objective.
 Before committing to a full-scale cluster run, two validation tests were performed on a single
 V100 (Rosie DGX partition) to verify the training pipeline.
 
+**Questions we are trying to answer here**
+The Shape Question: Can we successfully slice open the LLM's native 1D text embedding sequence and seamlessly stitch our custom 2D visual tensors inside without PyTorch throwing a dimensionality mismatch error?
+
+The Masking Question: Is the -100 label masking working perfectly? (i.e., Is the model strictly calculating loss on the ground-truth Python code, while safely ignoring the <|pad|> placeholders and structural \n tokens?)
+
 ---
 
 ## Architecture

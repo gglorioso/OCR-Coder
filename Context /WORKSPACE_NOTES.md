@@ -285,7 +285,7 @@ A three-phase hybrid workflow combining vision and text:
    - **Known issue:** lr_lora ramps to 2e-4 (20x too high) — must cap at 1e-5 before full run
    - **Next action:** Fix lr_lora schedule, then render remaining ~7,900 files for full dataset
 
-1. **🔲 TODO (next):** Phase 2 full-scale training (if 1.9c passes ghosting criterion)
+1. **🔲 TODO (next):** Submit Phase 3.3 training run — validates lr_lora=5e-6 fix on 100-sample mini dataset
 
 1. **✅ DONE (2026-03-13 session 13):** Phase 2 train_alignment.py built + OOM fixed
    - Architecture: frozen DeepSeek 8-bit + unfrozen ConvRoPEProjector (lr=1e-5, warmup=100)

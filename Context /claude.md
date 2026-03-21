@@ -7,7 +7,7 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3 — Mini Plumbing Test Complete
+**Current Phase:** Phase 3.3 — Fixed LR Training (lr_lora=5e-6, pending submission)
 **Last Updated:** 2026-03-20
 
 - ✅ **Phase 1.1 Exp2 CORRECTED** — Native CV + PCA(1024) + balanced weights. meanpool wins at 729 (74.8%), pool8x8 competitive at 441 (72.1%) and 121 (45.8%). Old pool8x8 "win" was dimensionality artifact.
@@ -17,8 +17,8 @@
 - ✅ **Phase 1.8 COMPLETE** — val_gap=0.141 (target >0.3). Adapter learns spatial separation but plateaus. Root cause: function signatures too low-info. Fix: docstring queries + learnable temperature.
 
 **Next Steps:**
-1. Fix lr_lora schedule — cap at 1e-5 (currently ramps to 2e-4)
-2. Render remaining ~7,900 files for full dataset
+1. Submit Phase 3.3 run (sbatch run_train.sh) and verify val_loss stays flat past epoch 5
+2. If val convergence confirmed, render remaining ~7,900 files for full dataset
 
 ---
 
