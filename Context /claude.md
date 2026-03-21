@@ -7,8 +7,8 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3.3 — Fixed LR Training (lr_lora=5e-6, pending submission)
-**Last Updated:** 2026-03-20
+**Current Phase:** Phase 3.3 PASSED — Fixed LR Training validated (val_loss 1.34→1.08, no divergence)
+**Last Updated:** 2026-03-21
 
 - ✅ **Phase 1.1 Exp2 CORRECTED** — Native CV + PCA(1024) + balanced weights. meanpool wins at 729 (74.8%), pool8x8 competitive at 441 (72.1%) and 121 (45.8%). Old pool8x8 "win" was dimensionality artifact.
 - ✅ **Phase 1.2 Exp2 MEAN BASELINE ADDED** — mean pool added as 3rd pool to run_regression_v2.py + plot_results_v2.py. Results: mean n_defs=0.663@256, pool8x8=0.692@256, gap is +0.03–0.08 R². Old "mean destroys boundaries (R²=0.364)" claim was domain-shift artifact — mean is weaker, not broken.
@@ -17,8 +17,8 @@
 - ✅ **Phase 1.8 COMPLETE** — val_gap=0.141 (target >0.3). Adapter learns spatial separation but plateaus. Root cause: function signatures too low-info. Fix: docstring queries + learnable temperature.
 
 **Next Steps:**
-1. Submit Phase 3.3 run (sbatch run_train.sh) and verify val_loss stays flat past epoch 5
-2. If val convergence confirmed, render remaining ~7,900 files for full dataset
+1. Phase 3.3 PASSED — train_loss 1.51→0.93, val_loss 1.34→1.08 over 9 epochs (job killed at epoch 10 by time limit). Differential LR (lr_lora=5e-6, lr_proj=1e-5) confirmed stable. Best checkpoint: Phase_3_3/checkpoints/epoch_9
+2. Render remaining ~7,900 files for full dataset, then scale to 40K-chunk Rosie DGX run
 
 ---
 

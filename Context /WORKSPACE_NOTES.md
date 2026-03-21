@@ -285,7 +285,14 @@ A three-phase hybrid workflow combining vision and text:
    - **Known issue:** lr_lora ramps to 2e-4 (20x too high) — must cap at 1e-5 before full run
    - **Next action:** Fix lr_lora schedule, then render remaining ~7,900 files for full dataset
 
-1. **🔲 TODO (next):** Submit Phase 3.3 training run — validates lr_lora=5e-6 fix on 100-sample mini dataset
+1. **✅ DONE (2026-03-21 session 16):** Phase 3.3 Fixed LR Training — PASSED
+   - Job 237225 on Rosie; train_loss 1.51→0.93, val_loss 1.34→1.08 over 9 epochs (killed at epoch 10 by 4h time limit)
+   - Differential LR fix confirmed: lr_lora=5e-6, lr_proj=1e-5, flat scheduler, grad_accum=4
+   - No val divergence — proves Phase 3 lr=2e-4 bug was root cause
+   - Scripts: MVV/Phase_3/Phase_3_3/train_joint.py, MVV/Phase_3/Phase_3_3/run_train.sh
+   - Best checkpoint: MVV/Phase_3/Phase_3_3/checkpoints/epoch_9
+
+1. **🔲 TODO (next):** Render remaining ~7,900 files and scale to full 40K-chunk Rosie DGX run
 
 1. **✅ DONE (2026-03-13 session 13):** Phase 2 train_alignment.py built + OOM fixed
    - Architecture: frozen DeepSeek 8-bit + unfrozen ConvRoPEProjector (lr=1e-5, warmup=100)
