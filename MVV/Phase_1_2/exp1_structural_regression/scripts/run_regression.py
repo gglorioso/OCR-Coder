@@ -241,21 +241,12 @@ def _plot(results: dict, out_dir: Path) -> None:
             ax.annotate(f"{v:.3f}", (b, v), textcoords="offset points",
                         xytext=(0, 9), ha="center", fontsize=8, color=color)
 
-    # Success threshold
-    ax.axhline(SUCCESS_R2, color="gray", lw=1.5, ls="--",
-               label=f"Success threshold (R²={SUCCESS_R2})")
-
     # Shade the unreadable zone (≤ 256 tokens)
     ax.axvspan(121 - 20, 256 + 20, alpha=0.07, color="#f59e0b",
                label="Unreadable text (≤256 tokens)")
 
-    # Train budget marker
-    ax.axvspan(TRAIN_BUDGET - 25, TRAIN_BUDGET + 25, alpha=0.08,
-               color="#2563eb", label="Train budget (729)")
-
     ax.set_title(
-        "MVV Phase 1.2 — Structural Regression: R² vs Token Budget\n"
-        "Resolution-as-Test (train=729, test=441/256/121)",
+        "Structural Regression: R² vs Token Budget",
         fontsize=11, fontweight="bold",
     )
     ax.set_xlabel("Token budget", fontsize=10)
@@ -264,7 +255,7 @@ def _plot(results: dict, out_dir: Path) -> None:
     ax.set_xticklabels([f"{b}\n({_px(b)})" for b in BUDGETS], fontsize=8)
     ax.invert_xaxis()
     ax.set_ylim(-0.1, 1.05)
-    ax.legend(fontsize=8, loc="lower right")
+    ax.legend(fontsize=8, loc="lower left")
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()

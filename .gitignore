@@ -69,6 +69,19 @@ MVV/Phase_1_9/a/data/labels/
 # Phase 3 mini dataset and checkpoints (large, regeneratable)
 MVV/Phase_3/mini_data/
 MVV/Phase_3/checkpoints/
+MVV/Phase_3/Phase_3_3/checkpoints/
+
+# Phase 3.4 full dataset (164GB tensors + texts, regeneratable)
+MVV/Phase_3/full_data/
+
+# Phase 3.4 reasoning dataset (actively written, commit manually after completion)
+MVV/Phase_3/Phase_3_4/reasoning_dataset.jsonl
+
+# Runtime logs
+reasoning_gen.log
+
+# Large binary archives
+Deepseek_Coder.zip
 
 # Environment files (API keys, secrets)
 .env
