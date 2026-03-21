@@ -69,3 +69,7 @@ MVV/Phase_1_9/a/data/labels/
 # Phase 3 mini dataset and checkpoints (large, regeneratable)
 MVV/Phase_3/mini_data/
 MVV/Phase_3/checkpoints/
+
+# Environment files (API keys, secrets)
+.env
+**/.env

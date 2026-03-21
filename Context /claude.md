@@ -7,18 +7,16 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3.3 PASSED — Fixed LR Training validated (val_loss 1.34→1.08, no divergence)
+**Current Phase:** Phase 3.4 — Stage 1 (Lossless Decoder) training script ready; reasoning dataset generation running locally
 **Last Updated:** 2026-03-21
 
-- ✅ **Phase 1.1 Exp2 CORRECTED** — Native CV + PCA(1024) + balanced weights. meanpool wins at 729 (74.8%), pool8x8 competitive at 441 (72.1%) and 121 (45.8%). Old pool8x8 "win" was dimensionality artifact.
-- ✅ **Phase 1.2 Exp2 MEAN BASELINE ADDED** — mean pool added as 3rd pool to run_regression_v2.py + plot_results_v2.py. Results: mean n_defs=0.663@256, pool8x8=0.692@256, gap is +0.03–0.08 R². Old "mean destroys boundaries (R²=0.364)" claim was domain-shift artifact — mean is weaker, not broken.
-- ✅ **Phase 1.3 domain shift plots DONE** — plot_domain_shift.py generates drift_ratio_bar.png + ndefs_displacement.png (300 dpi). All drift_ratios 0.66–0.81, below 1.0 threshold — no probe blindness triggered.
-- ✅ **Phase 1.4 COMPLETE** — Full test on 8,821 clean MVV samples. nesting_depth acc=0.749, keyword_density R²=0.690.
-- ✅ **Phase 1.8 COMPLETE** — val_gap=0.141 (target >0.3). Adapter learns spatial separation but plateaus. Root cause: function signatures too low-info. Fix: docstring queries + learnable temperature.
+- ✅ **Full 73,715-chunk dataset generated** — SigLIP features [1024,1152] fp16 + .txt pairs in MVV/Phase_3/full_data/tensors_and_texts/. 8,685 files processed, 295 skipped (>2000 lines). SigLIP upscaled via bicubic pos-embed interpolation 27x27→32x32 at startup.
+- ✅ **Phase_3_4/train_stage1.py written** — 8x H100 DDP (torchrun), native bfloat16, surgical LoRA targets, cosine LR schedule, 95/5 split, 3 epochs. Ready to sbatch when H100 node available.
+- ✅ **Phase_3_4/generate_reasoning_data.py running** — async gpt-4o-mini script generating macro+micro Q&A pairs from ground truth .txt files. 103 records written so far. Output: MVV/Phase_3/Phase_3_4/reasoning_dataset.jsonl.
 
 **Next Steps:**
-1. Phase 3.3 PASSED — train_loss 1.51→0.93, val_loss 1.34→1.08 over 9 epochs (job killed at epoch 10 by time limit). Differential LR (lr_lora=5e-6, lr_proj=1e-5) confirmed stable. Best checkpoint: Phase_3_3/checkpoints/epoch_9
-2. Render remaining ~7,900 files for full dataset, then scale to 40K-chunk Rosie DGX run
+1. Wait for reasoning_dataset.jsonl to complete (~8,685 files, macro + micro passes per file)
+2. Submit Stage 1 training: sbatch MVV/Phase_3/Phase_3_4/run_stage1.sh (requires H100 node, dgxh100 partition)
 
 ---
 

@@ -292,7 +292,23 @@ A three-phase hybrid workflow combining vision and text:
    - Scripts: MVV/Phase_3/Phase_3_3/train_joint.py, MVV/Phase_3/Phase_3_3/run_train.sh
    - Best checkpoint: MVV/Phase_3/Phase_3_3/checkpoints/epoch_9
 
-1. **🔲 TODO (next):** Render remaining ~7,900 files and scale to full 40K-chunk Rosie DGX run
+1. **✅ DONE (2026-03-21 session 17):** Full 73,715-chunk dataset generated (jobs 237273_1-4)
+   - SigLIP pos-embed upscaled bicubic 27x27→32x32 at startup; images resized 800x800→448x448 (LANCZOS) before encoding
+   - 8,685 files processed, 295 skipped (>2000 lines), 0 read errors. All tensors [1024,1152] fp16 verified
+   - Data root: MVV/Phase_3/full_data/tensors_and_texts/ (73,715 .pt/.txt pairs)
+   - Key bugs fixed: SigLIP pos-embed shape mismatch (1024 vs 729), manifest blank-line JSONDecodeError, aiohttp missing dep
+
+1. **✅ DONE (2026-03-21 session 17):** Phase_3_4 train_stage1.py + run_stage1.sh written
+   - 8x H100, native bfloat16 (no bitsandbytes), DDP via torchrun, device_map={"": device} for DDP safety
+   - Surgical LoRA: q_proj, kv_a_proj_with_mqa, kv_b_proj, o_proj, gate_proj, up_proj, down_proj
+   - Cosine LR + 5% warmup, batch=4/GPU (effective 32), 3 epochs, 95/5 val split
+
+1. **🔲 IN PROGRESS (2026-03-21):** generate_reasoning_data.py running locally (PID 2122087)
+   - Async gpt-4o-mini script: macro summary + micro spatial/cross-boundary Q&A per 3-chunk block
+   - 103 records written so far → MVV/Phase_3/Phase_3_4/reasoning_dataset.jsonl
+   - Has resume logic (reads processed file_ids on restart)
+
+1. **🔲 TODO (next):** Submit Stage 1 training: sbatch MVV/Phase_3/Phase_3_4/run_stage1.sh
 
 1. **✅ DONE (2026-03-13 session 13):** Phase 2 train_alignment.py built + OOM fixed
    - Architecture: frozen DeepSeek 8-bit + unfrozen ConvRoPEProjector (lr=1e-5, warmup=100)
