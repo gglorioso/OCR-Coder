@@ -65,3 +65,7 @@ __pycache__/
 # Phase 1.9a precomputed features (large binary files)
 MVV/Phase_1_9/a/data/features/
 MVV/Phase_1_9/a/data/labels/
+
+# Phase 3 mini dataset and checkpoints (large, regeneratable)
+MVV/Phase_3/mini_data/
+MVV/Phase_3/checkpoints/

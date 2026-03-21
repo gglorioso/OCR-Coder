@@ -279,11 +279,11 @@ A three-phase hybrid workflow combining vision and text:
    - **Result:** class=0.98, import=0.96, def=0.93. Proves character-level data survives 32×32→16×16 compression.
    - **Checkpoint:** MVV/Phase_1_9/checkpoints/best.pt
 
-1. **🔄 IN PROGRESS (2026-03-16 session 14):** Phase 1.9c — Large-scale alignment training
-   - Job submitted: `sbatch MVV/Phase_1_9/c/run_1_9c.sh` — ~8,980 samples, 5 epochs, batch=1, lr=1e-5
-   - Init from Phase 2 best_aligned.pt (val_loss=1.392, 500 samples)
-   - Success criterion: ≥3/20 inference samples classified as GHOSTING
-   - When done: fill results table in MVV/Phase_1_9/c/README.md, run infer_1_9c.py
+1. **✅ DONE (2026-03-20 session 15):** Phase 3 mini plumbing test — PASSED
+   - Job 237185 on Rosie; loss 2.03→0.64 on single sample (20 epochs), val best=1.0004 at epoch 3
+   - Scripts: MVV/Phase_3/train_joint.py, MVV/Phase_3/run_phase3_mini.sh
+   - **Known issue:** lr_lora ramps to 2e-4 (20x too high) — must cap at 1e-5 before full run
+   - **Next action:** Fix lr_lora schedule, then render remaining ~7,900 files for full dataset
 
 1. **🔲 TODO (next):** Phase 2 full-scale training (if 1.9c passes ghosting criterion)
 

@@ -7,8 +7,8 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 1.9c — Large-Scale Alignment Training running (~8,980 samples, 5 epochs). Waiting on results; target: 3/20 ghosting outputs.
-**Last Updated:** 2026-03-16 (session 14)
+**Current Phase:** Phase 3 — Mini Plumbing Test Complete
+**Last Updated:** 2026-03-20
 
 - ✅ **Phase 1.1 Exp2 CORRECTED** — Native CV + PCA(1024) + balanced weights. meanpool wins at 729 (74.8%), pool8x8 competitive at 441 (72.1%) and 121 (45.8%). Old pool8x8 "win" was dimensionality artifact.
 - ✅ **Phase 1.2 Exp2 MEAN BASELINE ADDED** — mean pool added as 3rd pool to run_regression_v2.py + plot_results_v2.py. Results: mean n_defs=0.663@256, pool8x8=0.692@256, gap is +0.03–0.08 R². Old "mean destroys boundaries (R²=0.364)" claim was domain-shift artifact — mean is weaker, not broken.
@@ -16,7 +16,9 @@
 - ✅ **Phase 1.4 COMPLETE** — Full test on 8,821 clean MVV samples. nesting_depth acc=0.749, keyword_density R²=0.690.
 - ✅ **Phase 1.8 COMPLETE** — val_gap=0.141 (target >0.3). Adapter learns spatial separation but plateaus. Root cause: function signatures too low-info. Fix: docstring queries + learnable temperature.
 
-**Current Step:** Phase 1.9c running — wait for job to finish, then fill results table in MVV/Phase_1_9/c/README.md. Success = 3/20 ghosting outputs. If passes, proceed to Phase 2 full-scale training.
+**Next Steps:**
+1. Fix lr_lora schedule — cap at 1e-5 (currently ramps to 2e-4)
+2. Render remaining ~7,900 files for full dataset
 
 ---
 
