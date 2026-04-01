@@ -1,0 +1,225 @@
+================================================================================
+PHASE 3.3 INFERENCE RESULTS REPORT
+================================================================================
+
+Inference Date: Thu Mar 26 2026 10:01:10 - 10:09:40 AM CDT
+Job ID: 238582
+Status: SUCCESS
+Duration: 8 minutes 30 seconds
+
+================================================================================
+SAMPLE METADATA
+================================================================================
+
+Sample ID: black__action__main_py_chunk0
+Source: Black formatter GitHub action (main.py)
+Vision Tensor Shape: [1024, 1152]
+Vision Tensor Size: 2.36 MB
+Model Checkpoint: MVV/Phase_3/Phase_3_3/checkpoints/epoch_9
+Model: DeepSeek-Coder-V2-Lite-Instruct (16B, 8-bit QLoRA)
+
+================================================================================
+GROUND TRUTH TEXT (Full - 40 lines, 1366 characters)
+================================================================================
+
+import os
+import re
+import shlex
+import shutil
+import sys
+from pathlib import Path
+from subprocess import PIPE, STDOUT, run
+
+ACTION_PATH = Path(os.environ["GITHUB_ACTION_PATH"])
+ENV_PATH = ACTION_PATH / ".black-env"
+ENV_BIN = ENV_PATH / ("Scripts" if sys.platform == "win32" else "bin")
+OPTIONS = os.getenv("INPUT_OPTIONS", default="")
+SRC = os.getenv("INPUT_SRC", default="")
+JUPYTER = os.getenv("INPUT_JUPYTER") == "true"
+BLACK_ARGS = os.getenv("INPUT_BLACK_ARGS", default="")
+VERSION = os.getenv("INPUT_VERSION", default="")
+USE_PYPROJECT = os.getenv("INPUT_USE_PYPROJECT") == "true"
+OUTPUT_FILE = os.getenv("OUTPUT_FILE", default="")
+
+BLACK_VERSION_RE = re.compile(r"^black([^A-Z0-9._-]+.*)$", re.IGNORECASE)
+EXTRAS_RE = re.compile(r"\[.*\]")
+EXPORT_SUBST_FAIL_RE = re.compile(r"\$Format:.*\$")
+
+
+def determine_version_specifier() -> str:
+    """Determine the version of Black to install.
+
+    The version can be specified either via the `with.version` input or via the
+    pyproject.toml file if `with.use_pyproject` is set to `true`.
+    """
+    if USE_PYPROJECT and VERSION:
+        print(
+            "::error::'with.version' and 'with.use_pyproject' inputs are "
+            "mutually exclusive.",
+            file=sys.stderr,
+            flush=True,
+        )
+        sys.exit(1)
+    if USE_PYPROJECT:
+        return read_version_specifier_from_pyproject()
+
+================================================================================
+MODEL GENERATED OUTPUT (Full - 49 lines, 1456 characters)
+================================================================================
+
+from __future__ import annotations
+
+import ast
+import sys
+from typing import Any
+
+from black.mode import Mode
+
+
+def test_basic_mode_parsing() -> None:
+    assert Mode(
+        target_versions={
+            "pyi": True,
+            "pyi-strict": True,
+            "pyi-legacy": True,
+            "pyi-legacy-2": True,
+            "pyi-legacy-3": True,
+            "pyi-legacy-4": True,
+            "pyi-legacy-5": True,
+            "pyi-legacy-6": True,
+            "pyi-legacy-7": True,
+            "pyi-legacy-8": True,
+            "pyi-legacy-9": True,
+            "pyi-legacy-10": True,
+            "pyi-legacy-11": True,
+            "pyi-legacy-12": True,
+            "pyi-legacy-13": True,
+            "pyi-legacy-14": True,
+            "pyi-legacy-15": True,
+            "pyi-legacy-16": True,
+            "pyi-legacy-17": True,
+            "pyi-legacy-18": True,
+            "pyi-legacy-19": True,
+            "pyi-legacy-20": True,
+            "pyi-legacy-21": True,
+            "pyi-legacy-22": True,
+            "pyi-legacy-23": True,
+            "pyi-legacy-24": True,
+            "pyi-legacy-25": True,
+            "pyi-legacy-26": True,
+            "pyi-legacy-27": True,
+            "pyi-legacy-28": True,
+            "pyi-legacy-29": True,
+            "pyi-legacy-30": True,
+            "pyi-legacy-31": True,
+            "pyi-legacy-32": True,
+            "pyi-legacy-33": True,
+            "pyi-legacy-34": True,
+            "pyi-legacy-35": True,
+        }
+    )
+
+================================================================================
+SUMMARY DATA CHART
+================================================================================
+
+                                    METRICS COMPARISON
+┌─────────────────────────────────┬──────────────────┬──────────────────┐
+│ Metric                          │ Ground Truth     │ Model Generated  │
+├─────────────────────────────────┼──────────────────┼──────────────────┤
+│ Total Lines                     │ 40               │ 49               │
+│ Total Characters                │ 1366             │ 1456             │
+│ Avg Chars per Line              │ 34.15            │ 29.71            │
+│ Line Overlap with Ground Truth   │ —                │ 5.7% (2-3 lines) │
+│ Inference Status                │ Reference        │ SUCCESS          │
+│ Execution Time                  │ N/A              │ 8 min 30 sec     │
+│ GPU Memory Used                 │ N/A              │ 32 GB            │
+└─────────────────────────────────┴──────────────────┴──────────────────┘
+
+                              TRAINING CONTEXT (Epoch 9)
+┌─────────────────────────────────┬──────────────────────────────────────┐
+│ Training Metric                 │ Value                                │
+├─────────────────────────────────┼──────────────────────────────────────┤
+│ Training Loss (Epoch 1)         │ 1.5066                               │
+│ Training Loss (Epoch 9)         │ 0.9262 (38% improvement)             │
+│ Validation Loss (Epoch 1)       │ 1.3399                               │
+│ Validation Loss (Epoch 9)       │ 1.0774 (19% improvement)             │
+│ Train-Val Gap                   │ 0.15 (stable, no overfitting)        │
+│ LoRA Learning Rate              │ 5e-6 (fixed to prevent divergence)   │
+│ Projector Learning Rate         │ 1e-5                                 │
+│ Batch Size                      │ 1 (gradient accum: 4, eff: 4)        │
+│ Training Data                   │ 100 samples (25 each: black, flask,  │
+│                                 │ django, numpy)                       │
+│ Train/Val Split                 │ 90/10                                │
+│ Max Text Tokens                 │ 768                                  │
+│ Visual Tokens                   │ 256                                  │
+│ LoRA Rank                       │ 16                                   │
+│ LoRA Alpha                      │ 32                                   │
+└─────────────────────────────────┴──────────────────────────────────────┘
+
+                         INFRASTRUCTURE CONFIGURATION
+┌─────────────────────────────────┬──────────────────────────────────────┐
+│ Component                       │ Details                              │
+├─────────────────────────────────┼──────────────────────────────────────┤
+│ Hardware (Inference)            │ 1× GPU (V100), 32GB RAM              │
+│ Partition                       │ dgx                                  │
+│ Time Limit                      │ 00:15:00 (15 minutes)                │
+│ Job ID                          │ 238582                               │
+│ Model Size                      │ 16B (DeepSeek-Coder-V2-Lite)         │
+│ Quantization                    │ 8-bit (bitsandbytes)                 │
+│ Vision Encoder                  │ SigLIP-SO400M (frozen)               │
+│ Vision Projection               │ ConvRoPEProjector (11.9M params)     │
+│ Adapter Type                    │ LoRA (289.8M trainable params)       │
+│ Max Generation Tokens           │ 512                                  │
+│ Generation Strategy             │ Greedy (argmax decoding)             │
+└─────────────────────────────────┴──────────────────────────────────────┘
+
+================================================================================
+KEY OBSERVATIONS
+================================================================================
+
+1. PIPELINE VALIDATION
+   - ✓ Vision tensor loaded correctly (shape: [1024, 1152])
+   - ✓ ConvRoPEProjector transformed features to [256, 2048]
+   - ✓ LoRA weights loaded and applied to all linear layers
+   - ✓ Model inference completed successfully in 8 minutes
+
+2. OUTPUT QUALITY
+   - Generated valid Python syntax (no parse errors)
+   - Model produced a function definition consistent with Black's codebase
+   - However, only 5.7% line overlap with ground truth indicates low fidelity
+   - Generated output is longer (49 vs 40 lines) with repetitive patterns
+
+3. DIVERGENCE PATTERN
+   - Ground truth: GitHub action setup with environment variables
+   - Generated: Black mode/testing code (different semantic domain)
+   - Suggests model learns general Python patterns but not file-specific content
+   - May indicate need for stronger visual grounding or different training objective
+
+4. TRAINING STABILITY
+   - Epoch 9 checkpoint shows stable convergence (no divergence)
+   - Learning rate fix (LoRA LR: 5e-6) prevented catastrophic forgetting
+   - Train-val gap remains stable at ~0.15 (good generalization)
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Phase 3.3 validates the complete inference pipeline from vision encoding through
+LLM generation. The model successfully:
+- Loads and processes vision features
+- Projects and integrates visual embeddings into text space
+- Generates syntactically valid Python code
+
+However, generation fidelity is low (5.7% line overlap), indicating the model
+learns surface-level Python patterns without strong semantic/visual grounding.
+This suggests future work should explore:
+- Stronger visual-semantic alignment objectives
+- Longer training with larger datasets
+- Alternative tokenization or embedding schemes
+- Fine-grained loss functions that reward code structure preservation
+
+The epoch_9 checkpoint is stable and ready for further analysis or scaling to
+larger datasets (Phase 3.4).
+
+================================================================================

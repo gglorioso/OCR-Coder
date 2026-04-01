@@ -7,16 +7,21 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3.4 — Stage 1 (Lossless Decoder) training script ready; reasoning dataset generation running locally
-**Last Updated:** 2026-03-21
+**Current Phase:** Phase 3.4 — Stage 1 (Lossless Decoder) training ACTIVE on DGX (job 239379); H100 4-GPU scripts ready, need resubmission
+**Last Updated:** 2026-04-01
 
-- ✅ **Full 73,715-chunk dataset generated** — SigLIP features [1024,1152] fp16 + .txt pairs in MVV/Phase_3/full_data/tensors_and_texts/. 8,685 files processed, 295 skipped (>2000 lines). SigLIP upscaled via bicubic pos-embed interpolation 27x27→32x32 at startup.
-- ✅ **Phase_3_4/train_stage1.py written** — 8x H100 DDP (torchrun), native bfloat16, surgical LoRA targets, cosine LR schedule, 95/5 split, 3 epochs. Ready to sbatch when H100 node available.
-- ✅ **Phase_3_4/generate_reasoning_data.py running** — async gpt-4o-mini script generating macro+micro Q&A pairs from ground truth .txt files. 103 records written so far. Output: MVV/Phase_3/Phase_3_4/reasoning_dataset.jsonl.
+- ✅ **DGX V100 Stage 1 running** — Job 239379 (4x V100, QLoRA nf4, LoRA r=32 α=64). Epoch 1 ~57% complete, loss 0.27–0.59. Continuation job queued (dependency=afterany:239379), will resume from `epoch_latest` for 2 more epochs.
+- ✅ **H100 4-GPU scripts created** — `run_stage1_4h100.sh`, `run_stage2_4h100.sh` (5 epochs, 24h, 4x H100). dtype fix applied (`x = x.to(self.conv.weight.dtype)` in ConvRoPEProjector.forward). Job 239381 crashed before fix — needs resubmission.
+- ✅ **DGX train_stage1.py overhauled** — `MVV/Phase_3/Phase_3_4/DGX_run/train_stage1.py`: manual grad-sync (no DDP), fp16 autocast, GradScaler(init_scale=2**10), has_valid_grad guard, --resume-from arg, mid-epoch checkpointing every 500 steps.
+- ✅ **Inference LoRA loading fixed** — `run_inference_stage1.py` now uses `PeftModel.from_pretrained` (replaces fragile get_peft_model + load_adapter).
+- ✅ **Reasoning dataset complete** — `MVV/Phase_3/Phase_3_4/reasoning_dataset.jsonl` (macro+micro Q&A pairs).
+- ✅ **Phase 3.3 inference** — 5.7% line overlap on smoke test sample (undertrained baseline).
 
 **Next Steps:**
-1. Wait for reasoning_dataset.jsonl to complete (~8,685 files, macro + micro passes per file)
-2. Submit Stage 1 training: sbatch MVV/Phase_3/Phase_3_4/run_stage1.sh (requires H100 node, dgxh100 partition)
+1. Wait for DGX job 239379 + continuation to finish. Check `slurm-stage1-4gpu-*.out` for loss trends.
+2. Resubmit H100 Stage 1: `sbatch MVV/Phase_3/Phase_3_4/run_stage1_4h100.sh` (dtype fix now applied).
+3. Run inference on best checkpoint: `sbatch MVV/Phase_3/Phase_3_4/DGX_run/run_inference_stage1.sh`.
+4. Once Stage 1 converges (val_loss < 1.40), submit Stage 2 reasoning fine-tune.
 
 ---
 
