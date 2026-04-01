@@ -1,12 +1,21 @@
 """
 Phase 3.4 -- Stage 1 (Lossless Decoder) Training
 
-Multi-GPU DDP training with 8x H100s. Key differences from Phase 3.3:
-  - No bitsandbytes: native bfloat16 instead of 8-bit quantization
-  - DDP across 8 GPUs (torchrun), effective batch = 4 * 8 = 32
+Multi-GPU training with 4x H100s. Native bfloat16, no bitsandbytes.
+DDP is used for parameter broadcasting at init, but gradient sync is
+handled manually (all-reduce on trainable grads only) via no_sync() to
+prevent NCCL deadlocks when individual ranks hit NaN/OOM.
+
+Key details:
+  - Native bfloat16 (no quantization) — H100 80GB has ample VRAM
+  - bfloat16 autocast for consistent dtype handling
+  - Manual gradient all-reduce (DDP no_sync + explicit sync)
+  - broadcast_buffers=False to avoid non-trainable buffer sync overhead
   - Cosine LR schedule with linear warmup
   - Surgical LoRA targets (not "all-linear")
   - DistributedSampler for both train and val
+  - Mid-epoch checkpointing every 500 optimizer steps
+  - --resume-from support for crash recovery
 
 Architecture unchanged:
   Code image -> SigLIP features [1024, 1152]
@@ -31,7 +40,7 @@ from torch.utils.data.distributed import DistributedSampler
 from pathlib import Path
 from typing import Optional
 from transformers import AutoModelForCausalLM, AutoTokenizer, get_cosine_schedule_with_warmup
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, PeftModel
 from tqdm import tqdm
 
 # ---------------------------------------------------------------------------
@@ -81,6 +90,8 @@ def apply_2d_rope_16x16(x: torch.Tensor) -> torch.Tensor:
     rows = torch.arange(256, device=device) // 16
     cols = torch.arange(256, device=device) % 16
     cos_table, sin_table = _sinusoidal_freqs(16, half_dim, device)
+    cos_table = cos_table.to(x.dtype)
+    sin_table = sin_table.to(x.dtype)
     cos_row = cos_table[rows]
     sin_row = sin_table[rows]
     cos_col = cos_table[cols]
@@ -282,8 +293,12 @@ def is_main_process():
 # ---------------------------------------------------------------------------
 # Model loading (no bitsandbytes, native bfloat16)
 # ---------------------------------------------------------------------------
-def load_model(model_path: str, device: torch.device):
-    """Load tokenizer, bfloat16 LLM with LoRA, and ConvRoPEProjector."""
+def load_model(model_path: str, device: torch.device, resume_from: str = None):
+    """Load tokenizer, bfloat16 LLM with LoRA, and ConvRoPEProjector.
+
+    If resume_from is provided, loads projector weights and LoRA adapter from
+    that checkpoint directory instead of starting from scratch.
+    """
     if is_main_process():
         print(f"[load_model] Loading tokenizer from {model_path}")
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
@@ -299,25 +314,38 @@ def load_model(model_path: str, device: torch.device):
         torch_dtype=torch.bfloat16,
     )
 
-    # Surgical LoRA targets for DeepSeek-Coder-V2
-    lora_config = LoraConfig(
-        r=LORA_R,
-        lora_alpha=LORA_ALPHA,
-        lora_dropout=LORA_DROPOUT,
-        target_modules=[
-            "q_proj", "kv_a_proj_with_mqa", "kv_b_proj", "o_proj",
-            "gate_proj", "up_proj", "down_proj",
-        ],
-        bias="none",
-        task_type="CAUSAL_LM",
-    )
-    llm = get_peft_model(llm, lora_config)
+    if resume_from is not None:
+        resume_dir = Path(resume_from)
+        if is_main_process():
+            print(f"[load_model] Resuming LoRA from {resume_dir / 'lora_adapter'}")
+        llm = PeftModel.from_pretrained(llm, str(resume_dir / "lora_adapter"), is_trainable=True)
+    else:
+        lora_config = LoraConfig(
+            r=LORA_R,
+            lora_alpha=LORA_ALPHA,
+            lora_dropout=LORA_DROPOUT,
+            target_modules=[
+                "q_proj", "kv_a_proj_with_mqa", "kv_b_proj", "o_proj",
+                "gate_proj", "up_proj", "down_proj",
+            ],
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        llm = get_peft_model(llm, lora_config)
+
     if is_main_process():
         llm.print_trainable_parameters()
 
-    # Projector -- random init, bfloat16
     projector = ConvRoPEProjector(feat_dim=1152, proj_dim=2048)
     projector.to(device=device, dtype=torch.bfloat16)
+
+    if resume_from is not None:
+        resume_dir = Path(resume_from)
+        proj_ckpt_path = resume_dir / "projector.pth"
+        if is_main_process():
+            print(f"[load_model] Resuming projector from {proj_ckpt_path}")
+        proj_ckpt = torch.load(str(proj_ckpt_path), map_location=device, weights_only=True)
+        projector.load_state_dict(proj_ckpt["projector_state_dict"])
 
     model = CoderVLModel(projector, llm)
 
@@ -351,9 +379,18 @@ def validate(model: nn.Module, val_loader: DataLoader, device: torch.device) -> 
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
 
-            loss = model(vision, input_ids, attention_mask, labels)
-            total_loss += loss.item()
-            n_batches += 1
+            try:
+                with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                    loss = model(vision, input_ids, attention_mask, labels)
+                if not torch.isfinite(loss):
+                    continue
+                total_loss += loss.item()
+                n_batches += 1
+            except RuntimeError as e:
+                if "out of memory" in str(e):
+                    torch.cuda.empty_cache()
+                    continue
+                raise
 
     model.train()
     return total_loss / n_batches if n_batches > 0 else float("inf")
@@ -411,8 +448,11 @@ def train(model, tokenizer, data_dir, save_dir, epochs, batch_size, local_rank):
         num_workers=2, pin_memory=True, collate_fn=collate_fn,
     )
 
-    # Wrap in DDP
-    ddp_model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
+    # Wrap in DDP — broadcast_buffers=False prevents allreduce on non-trainable
+    # buffers (e.g. layernorm running stats), avoiding NCCL timeouts.
+    # We use no_sync() everywhere and manually all-reduce trainable grads,
+    # so DDP only handles parameter broadcasting at init.
+    ddp_model = DDP(model, device_ids=[local_rank], find_unused_parameters=False, broadcast_buffers=False)
 
     # Optimizer -- two param groups (use unwrapped model)
     optimizer = torch.optim.AdamW([
@@ -440,11 +480,23 @@ def train(model, tokenizer, data_dir, save_dir, epochs, batch_size, local_rank):
     best_val_loss = float("inf")
     skipped_batches = 0
 
-    # Collect trainable params once (for gradient clipping)
+    # Collect trainable params once (for gradient sync + clipping)
     all_params = (
         list(model.projector.parameters())
         + [p for p in model.llm.parameters() if p.requires_grad]
     )
+
+    world_size = dist.get_world_size()
+
+    def sync_gradients():
+        """All-reduce trainable gradients across ranks, average by world_size.
+        Initializes missing grads to zero so ALL ranks participate in every
+        all_reduce call, preventing NCCL deadlocks when some ranks skip backward."""
+        for p in all_params:
+            if p.grad is None:
+                p.grad = torch.zeros_like(p.data)
+            dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
+            p.grad.div_(world_size)
 
     for epoch in range(epochs):
         train_sampler.set_epoch(epoch)
@@ -464,36 +516,39 @@ def train(model, tokenizer, data_dir, save_dir, epochs, batch_size, local_rank):
         for batch_idx, batch in enumerate(loader_iter):
             got_loss = False
 
-            if batch is not None:
-                vision = batch["vision"].to(device)
-                input_ids = batch["input_ids"].to(device)
-                attention_mask = batch["attention_mask"].to(device)
-                labels = batch["labels"].to(device)
+            with ddp_model.no_sync():
+                if batch is not None:
+                    vision = batch["vision"].to(device)
+                    input_ids = batch["input_ids"].to(device)
+                    attention_mask = batch["attention_mask"].to(device)
+                    labels = batch["labels"].to(device)
 
-                try:
-                    loss = ddp_model(vision, input_ids, attention_mask, labels)
-                    if not torch.isfinite(loss):
-                        print(f"[train] NaN/Inf loss at batch {batch_idx}, skipping")
-                        optimizer.zero_grad()
-                        skipped_batches += 1
-                    else:
-                        scaled_loss = loss / GRAD_ACCUM_STEPS
-                        scaled_loss.backward()
-                        got_loss = True
-                except RuntimeError as e:
-                    if "out of memory" in str(e):
-                        print(f"[train] OOM on batch {batch_idx}, skipping")
-                        torch.cuda.empty_cache()
-                        optimizer.zero_grad()
-                        skipped_batches += 1
-                    else:
-                        raise
-            else:
-                skipped_batches += 1
+                    try:
+                        with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                            loss = ddp_model(vision, input_ids, attention_mask, labels)
+                        if not torch.isfinite(loss):
+                            print(f"[train] NaN/Inf loss at batch {batch_idx}, skipping")
+                            optimizer.zero_grad()
+                            skipped_batches += 1
+                        else:
+                            scaled_loss = loss / GRAD_ACCUM_STEPS
+                            scaled_loss.backward()
+                            got_loss = True
+                    except RuntimeError as e:
+                        if "out of memory" in str(e):
+                            print(f"[train] OOM on batch {batch_idx}, skipping")
+                            torch.cuda.empty_cache()
+                            optimizer.zero_grad()
+                            skipped_batches += 1
+                        else:
+                            raise
+                else:
+                    skipped_batches += 1
 
             accum_step += 1
 
             if accum_step % GRAD_ACCUM_STEPS == 0:
+                sync_gradients()
                 torch.nn.utils.clip_grad_norm_(all_params, max_norm=1.0)
                 optimizer.step()
                 scheduler.step()
@@ -519,6 +574,7 @@ def train(model, tokenizer, data_dir, save_dir, epochs, batch_size, local_rank):
 
         # Handle leftover accumulated gradients
         if accum_step % GRAD_ACCUM_STEPS != 0:
+            sync_gradients()
             torch.nn.utils.clip_grad_norm_(all_params, max_norm=1.0)
             optimizer.step()
             scheduler.step()
@@ -568,14 +624,18 @@ def main():
                         help="Directory for saving checkpoints")
     parser.add_argument("--epochs", type=int, default=EPOCHS)
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
+    parser.add_argument("--resume-from", type=str, default=None,
+                        help="Path to checkpoint dir (containing projector.pth and lora_adapter/) to resume from")
     args = parser.parse_args()
 
     if is_main_process():
         print(f"[main] Starting Stage 1 training")
         print(f"[main] Data: {args.data_dir}")
         print(f"[main] GPUs: {dist.get_world_size()}")
+        if args.resume_from:
+            print(f"[main] Resuming from checkpoint: {args.resume_from}")
 
-    model, tokenizer = load_model(args.model_path, device)
+    model, tokenizer = load_model(args.model_path, device, resume_from=args.resume_from)
     train(model, tokenizer, args.data_dir, args.save_dir, args.epochs, args.batch_size, local_rank)
 
     cleanup_ddp()
