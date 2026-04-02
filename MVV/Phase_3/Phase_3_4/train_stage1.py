@@ -11,6 +11,8 @@ Key details:
   - bfloat16 autocast for consistent dtype handling
   - Manual gradient all-reduce (DDP no_sync + explicit sync)
   - broadcast_buffers=False to avoid non-trainable buffer sync overhead
+  - Prefix-only (no teacher forcing): text tokens in input_ids are
+    replaced with pad tokens so the model must predict from vision alone
   - Cosine LR schedule with linear warmup
   - Surgical LoRA targets (not "all-linear")
   - DistributedSampler for both train and val
@@ -206,8 +208,13 @@ class JointDataset(Dataset):
             if len(text_ids) > max_text_len:
                 text_ids = text_ids[:max_text_len]
 
+            # Prefix-only training: text positions in input_ids are masked
+            # (pad tokens) so the model must rely on vision tokens to predict
+            # text.  Without this, teacher forcing lets the model copy the
+            # previous ground-truth token and ignore vision entirely.
             placeholder = [pad_id] * N_VISUAL_TOKENS
-            input_ids = placeholder + newline_ids + text_ids + [eos_id]
+            text_mask = [pad_id] * len(text_ids)   # mask text in input
+            input_ids = placeholder + newline_ids + text_mask + [eos_id]
 
             labels = (
                 [-100] * N_VISUAL_TOKENS

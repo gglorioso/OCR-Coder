@@ -136,6 +136,7 @@ class ConvRoPEProjector(nn.Module):
         x = self.conv(x)
         x = x.flatten(2).transpose(1, 2)
         x = apply_2d_rope_16x16(x)
+        x = x.to(self.conv.weight.dtype)  # re-cast after RoPE (float32 trig ops may upcast)
         x = self.mlp(x)
         return x
 
@@ -321,8 +322,13 @@ class ReasoningDataset(Dataset):
             if len(answer_ids) > max_answer_len:
                 answer_ids = answer_ids[:max_answer_len]
 
+            # Prefix-only training: answer positions in input_ids are masked
+            # (pad tokens) so the model must rely on vision + question to
+            # generate answers.  Without this, teacher forcing lets the model
+            # copy the previous ground-truth token and ignore vision entirely.
             placeholder = [pad_id] * n_visual_tokens
-            input_ids = placeholder + prompt_ids + answer_ids + [eos_id]
+            answer_mask = [pad_id] * len(answer_ids)  # mask answer in input
+            input_ids = placeholder + prompt_ids + answer_mask + [eos_id]
 
             # Labels: only supervise on the answer tokens + eos
             labels = (
@@ -356,6 +362,10 @@ def collate_fn(batch: list) -> Optional[dict]:
 
     All samples in a batch must have the same number of vision chunks (we pad
     to the max n_chunks in the batch by repeating the last chunk's features).
+
+    Variable-length text sequences are handled via pad_sequence so that
+    samples with different n_chunks (and thus different total sequence lengths)
+    can coexist in the same batch without a shape mismatch in torch.stack.
     """
     batch = [b for b in batch if b is not None]
     if not batch:
@@ -363,13 +373,11 @@ def collate_fn(batch: list) -> Optional[dict]:
 
     pad_id = collate_fn.pad_token_id
 
-    # Find max chunks and max text length in this batch
+    # Find max chunks in this batch — all samples' visual placeholder regions
+    # must be expanded to this length so the LLM sees a uniform prefix.
     max_chunks = max(b["n_chunks"] for b in batch)
     max_visual_tokens = max_chunks * N_VISUAL_TOKENS
-    max_text_len = max(b["input_ids"].size(0) for b in batch)
 
-    # We need to re-pad input_ids and labels so visual placeholder region
-    # matches max_visual_tokens for all samples
     vision_list = []
     input_ids_list = []
     labels_list = []
@@ -378,58 +386,47 @@ def collate_fn(batch: list) -> Optional[dict]:
     for b in batch:
         n_chunks = b["n_chunks"]
         n_visual = n_chunks * N_VISUAL_TOKENS
-        extra_visual = max_visual_tokens - n_visual
 
-        # Pad vision to max_chunks * 1024 tokens
+        # Pad vision tensor to max_chunks * 1024 feature rows
         vis = b["vision"]  # [n_chunks * 1024, 1152]
         if n_chunks < max_chunks:
-            # Pad with zeros (projector output for zero input will be near-zero)
             pad_vis = torch.zeros(
                 (max_chunks - n_chunks) * 1024, 1152, dtype=vis.dtype
             )
             vis = torch.cat([vis, pad_vis], dim=0)
         vision_list.append(vis)
 
-        # Original ids without visual placeholders
+        # Strip existing (shorter) visual placeholder, attach new (longer) one
         orig_ids = b["input_ids"]
         orig_labels = b["labels"]
         text_ids = orig_ids[n_visual:]
         text_labels = orig_labels[n_visual:]
 
-        # New placeholder + text
         new_placeholder_ids = torch.full((max_visual_tokens,), pad_id, dtype=torch.long)
         new_placeholder_labels = torch.full((max_visual_tokens,), -100, dtype=torch.long)
 
         new_ids = torch.cat([new_placeholder_ids, text_ids])
         new_labels = torch.cat([new_placeholder_labels, text_labels])
 
-        # Right-pad text to match max total length
-        total_len = max_visual_tokens + (max_text_len - n_visual)
-        current_len = new_ids.size(0)
-        pad_len = total_len - current_len
-
-        if pad_len > 0:
-            new_ids = torch.cat([new_ids, torch.full((pad_len,), pad_id, dtype=torch.long)])
-            new_labels = torch.cat([new_labels, torch.full((pad_len,), -100, dtype=torch.long)])
-        elif pad_len < 0:
-            # Truncate (shouldn't happen, but safety)
-            new_ids = new_ids[:total_len]
-            new_labels = new_labels[:total_len]
-
-        mask_len = max_visual_tokens + text_ids.size(0)
-        total_final = new_ids.size(0)
-        mask = torch.zeros(total_final, dtype=torch.long)
-        mask[:mask_len] = 1
+        # Attention mask: 1 for visual tokens + real text tokens, 0 for padding
+        # (padding will be added later by pad_sequence, so mark up to here as real)
+        mask = torch.ones(new_ids.size(0), dtype=torch.long)
 
         input_ids_list.append(new_ids)
         labels_list.append(new_labels)
         attention_mask_list.append(mask)
 
+    # Use pad_sequence (batch_first=True) so variable-length sequences are safe
+    from torch.nn.utils.rnn import pad_sequence
+    input_ids_padded = pad_sequence(input_ids_list, batch_first=True, padding_value=pad_id)
+    labels_padded = pad_sequence(labels_list, batch_first=True, padding_value=-100)
+    attention_mask_padded = pad_sequence(attention_mask_list, batch_first=True, padding_value=0)
+
     return {
         "vision": torch.stack(vision_list),
-        "input_ids": torch.stack(input_ids_list),
-        "attention_mask": torch.stack(attention_mask_list),
-        "labels": torch.stack(labels_list),
+        "input_ids": input_ids_padded,
+        "attention_mask": attention_mask_padded,
+        "labels": labels_padded,
         "n_visual_tokens": max_visual_tokens,
     }
 
