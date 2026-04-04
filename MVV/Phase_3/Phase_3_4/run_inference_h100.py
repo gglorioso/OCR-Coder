@@ -24,7 +24,42 @@ import torch
 import torch.nn as nn
 from pathlib import Path
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import DynamicCache
 from peft import PeftModel
+
+# ---------------------------------------------------------------------------
+# Monkey-patch: transformers >= 5.x removed DynamicCache.from_legacy_cache()
+# and .to_legacy_cache(), but the cached DeepSeek modeling_deepseek.py still
+# calls them.  Re-add minimal compatibility shims so the model runs.
+# ---------------------------------------------------------------------------
+if not hasattr(DynamicCache, "from_legacy_cache"):
+    @classmethod
+    def _from_legacy_cache(cls, past_key_values=None):
+        """Convert legacy tuple-of-tuples KV cache to a DynamicCache instance."""
+        cache = cls()
+        if past_key_values is not None:
+            for layer_idx, (key, value) in enumerate(past_key_values):
+                cache.update(key, value, layer_idx)
+        return cache
+    DynamicCache.from_legacy_cache = _from_legacy_cache
+    print("[compat] Patched DynamicCache.from_legacy_cache for transformers >= 5.x")
+
+if not hasattr(DynamicCache, "to_legacy_cache"):
+    def _to_legacy_cache(self):
+        """Convert DynamicCache back to legacy tuple-of-tuples format."""
+        legacy = []
+        for layer in self.layers:
+            legacy.append((layer.keys, layer.values))
+        return tuple(legacy)
+    DynamicCache.to_legacy_cache = _to_legacy_cache
+    print("[compat] Patched DynamicCache.to_legacy_cache for transformers >= 5.x")
+
+if not hasattr(DynamicCache, "get_usable_length"):
+    def _get_usable_length(self, new_seq_length: int, layer_idx: int = 0):
+        """Return current cache sequence length (legacy compat shim)."""
+        return self.get_seq_length(layer_idx)
+    DynamicCache.get_usable_length = _get_usable_length
+    print("[compat] Patched DynamicCache.get_usable_length for transformers >= 5.x")
 
 # ---------------------------------------------------------------------------
 # Constants -- must match train_stage1.py exactly
@@ -163,6 +198,24 @@ def load_model_for_inference(model_path: str, ckpt_dir: str, device: str):
     projector.eval()
     llm.eval()
 
+    # [DEBUG] Print projector architecture and stats
+    print("[DEBUG projector] Architecture summary:")
+    print(projector)
+
+    # Count parameters
+    total_params = sum(p.numel() for p in projector.parameters())
+    trainable_params = sum(p.numel() for p in projector.parameters() if p.requires_grad)
+    print(f"[DEBUG projector] Total params: {total_params:,}, Trainable: {trainable_params:,}")
+
+    # Print dtype and device info
+    for name, param in projector.named_parameters():
+        print(f"[DEBUG projector] {name}: dtype={param.dtype}, device={param.device}")
+
+    print(f"[DEBUG projector] projector.eval() called: {not projector.training}")
+    print(f"[DEBUG projector] Checkpoint path: {proj_path}")
+    print(f"[DEBUG projector] Checkpoint exists: {proj_path.exists()}")
+    print()
+
     return projector, llm, tokenizer
 
 
@@ -185,7 +238,30 @@ def generate(projector, llm, tokenizer, vision_tensor, device, max_new_tokens=MA
     """
     # Project vision features -- keep in bfloat16
     vision = vision_tensor.unsqueeze(0).to(device=device, dtype=torch.bfloat16)  # [1, 1024, 1152]
+
+    # [DEBUG vision] Print vision tensor stats before projection
+    print("[DEBUG vision] Input vision tensor stats:")
+    print(f"[DEBUG vision] shape: {vision.shape}, dtype: {vision.dtype}")
+    try:
+        print(f"[DEBUG vision] min: {vision.min().item():.6f}, max: {vision.max().item():.6f}")
+        print(f"[DEBUG vision] mean: {vision.mean().item():.6f}, std: {vision.std().item():.6f}")
+        print(f"[DEBUG vision] num_zeros: {(vision == 0).sum().item()}, num_nans: {torch.isnan(vision).sum().item()}")
+    except Exception as e:
+        print(f"[DEBUG vision] Error computing stats: {e}")
+    print()
+
     visual_embeds = projector(vision)  # [1, 256, 2048]
+
+    # [DEBUG visual_embeds] Print projected embeddings stats
+    print("[DEBUG visual_embeds] Output visual embeddings stats (after projector):")
+    print(f"[DEBUG visual_embeds] shape: {visual_embeds.shape}, dtype: {visual_embeds.dtype}")
+    try:
+        print(f"[DEBUG visual_embeds] min: {visual_embeds.min().item():.6f}, max: {visual_embeds.max().item():.6f}")
+        print(f"[DEBUG visual_embeds] mean: {visual_embeds.mean().item():.6f}, std: {visual_embeds.std().item():.6f}")
+        print(f"[DEBUG visual_embeds] num_nans: {torch.isnan(visual_embeds).sum().item()}, num_infs: {torch.isinf(visual_embeds).sum().item()}")
+    except Exception as e:
+        print(f"[DEBUG visual_embeds] Error computing stats: {e}")
+    print()
 
     # Build initial input: 256 placeholder tokens + newline
     pad_id = tokenizer.pad_token_id
@@ -198,15 +274,52 @@ def generate(projector, llm, tokenizer, vision_tensor, device, max_new_tokens=MA
         text_embeds = llm.get_input_embeddings()(input_ids)
     text_embeds = text_embeds.clone()
 
+    # [DEBUG embed] Print text embeddings before splicing
+    print("[DEBUG embed] Text embeddings BEFORE splicing:")
+    print(f"[DEBUG embed] shape: {text_embeds.shape}, dtype: {text_embeds.dtype}")
+    print(f"[DEBUG embed] First 260 positions (where vision should go) stats:")
+    try:
+        first_260 = text_embeds[:, :260, :]
+        print(f"[DEBUG embed] min: {first_260.min().item():.6f}, max: {first_260.max().item():.6f}")
+        print(f"[DEBUG embed] mean: {first_260.mean().item():.6f}, std: {first_260.std().item():.6f}")
+    except Exception as e:
+        print(f"[DEBUG embed] Error computing stats: {e}")
+    print()
+
     # Splice in visual embeddings (match dtype of text embeddings)
     visual_embeds = visual_embeds.to(dtype=text_embeds.dtype)
     text_embeds[:, :N_VISUAL_TOKENS, :] = visual_embeds
+
+    # [DEBUG embed] Print text embeddings after splicing
+    print("[DEBUG embed] Text embeddings AFTER splicing visual:")
+    print(f"[DEBUG embed] shape: {text_embeds.shape}, dtype: {text_embeds.dtype}")
+    print(f"[DEBUG embed] First 260 positions (should have visual now) stats:")
+    try:
+        first_260 = text_embeds[:, :260, :]
+        print(f"[DEBUG embed] min: {first_260.min().item():.6f}, max: {first_260.max().item():.6f}")
+        print(f"[DEBUG embed] mean: {first_260.mean().item():.6f}, std: {first_260.std().item():.6f}")
+    except Exception as e:
+        print(f"[DEBUG embed] Error computing stats: {e}")
+    print()
+
+    # [DEBUG embed] Full embedding construction summary
+    print("[DEBUG embed] Final inputs_embeds construction:")
+    print(f"[DEBUG embed] inputs_embeds.shape: {text_embeds.shape}, dtype: {text_embeds.dtype}")
+    try:
+        vision_portion = text_embeds[:, :N_VISUAL_TOKENS, :]
+        text_portion = text_embeds[:, N_VISUAL_TOKENS:, :]
+        print(f"[DEBUG embed] Vision portion (0-255): min={vision_portion.min().item():.6f}, max={vision_portion.max().item():.6f}, mean={vision_portion.mean().item():.6f}, std={vision_portion.std().item():.6f}")
+        print(f"[DEBUG embed] Text portion (256+): min={text_portion.min().item():.6f}, max={text_portion.max().item():.6f}, mean={text_portion.mean().item():.6f}, std={text_portion.std().item():.6f}")
+    except Exception as e:
+        print(f"[DEBUG embed] Error computing portion stats: {e}")
+    print()
 
     # Initial forward pass to get KV cache
     seq_len = input_ids.shape[1]
     position_ids = torch.arange(seq_len, device=device).unsqueeze(0)
     attention_mask = torch.ones(1, seq_len, dtype=torch.long, device=device)
 
+    print("[DEBUG gen] Starting initial forward pass (first 10 tokens)...")
     outputs = llm(
         inputs_embeds=text_embeds,
         attention_mask=attention_mask,
@@ -221,6 +334,16 @@ def generate(projector, llm, tokenizer, vision_tensor, device, max_new_tokens=MA
 
     generated_ids = [next_token.item()]
     eos_id = tokenizer.eos_token_id
+
+    # [DEBUG gen] Print first token prediction
+    print(f"[DEBUG gen] First token after initial forward pass: {next_token.item()}")
+    try:
+        top5_logits, top5_indices = torch.topk(next_token_logits, 5, dim=-1)
+        top5_tokens = [tokenizer.decode([idx.item()]) for idx in top5_indices[0]]
+        print(f"[DEBUG gen] Top-5 predictions: {list(zip(top5_indices[0].cpu().tolist(), top5_tokens))}")
+    except Exception as e:
+        print(f"[DEBUG gen] Error getting top-5: {e}")
+    print()
 
     # Autoregressive loop (greedy, temperature=0)
     for step in range(max_new_tokens - 1):
@@ -244,6 +367,24 @@ def generate(projector, llm, tokenizer, vision_tensor, device, max_new_tokens=MA
         next_token_logits = outputs.logits[:, -1, :]
         next_token = next_token_logits.argmax(dim=-1, keepdim=True)
         generated_ids.append(next_token.item())
+
+        # [DEBUG gen] Print debug info every 100 tokens or first 10 tokens
+        if step < 10 or (step + 1) % 100 == 0:
+            token_id = next_token.item()
+            token_text = tokenizer.decode([token_id])
+            print(f"[DEBUG gen] Step {step+1}: token_id={token_id}, token_text={repr(token_text)}")
+            try:
+                top5_logits, top5_indices = torch.topk(next_token_logits, 5, dim=-1)
+                top5_info = [(idx.item(), tokenizer.decode([idx.item()])) for idx in top5_indices[0]]
+                print(f"[DEBUG gen]   Top-5: {top5_info}")
+            except Exception as e:
+                print(f"[DEBUG gen]   Error getting top-5: {e}")
+
+    # [DEBUG gen] Print final generated token IDs before decoding
+    print()
+    print("[DEBUG gen] Final generated token IDs (first 50):")
+    print(f"[DEBUG gen] {generated_ids[:50]}")
+    print()
 
     return tokenizer.decode(generated_ids, skip_special_tokens=True)
 
