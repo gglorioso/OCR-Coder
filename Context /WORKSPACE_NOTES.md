@@ -274,19 +274,21 @@ A three-phase hybrid workflow combining vision and text:
 
 ## Next Actions
 
+1. **✅ DONE (2026-04-06 session 19):** Phase 3.4 — Teacher forcing diagnosis + prefix-only v2 training prep
+   - **Root cause found:** Teacher forcing let model cheat — 99.78% of tokens predictable from text context alone, so vision tokens were ignored entirely.
+   - **Prefix-only training fix:** Mask text in input_ids with pad tokens, forcing model to generate from vision prefix only.
+   - **21x embedding scale mismatch fixed:** Projector output std=1.64 vs LLM text embeddings std=0.08. Added LayerNorm + learnable `output_scale` (init=0.1) to ConvRoPEProjector.
+   - **Batch size 4→2 per GPU:** 50% OOM skip rate was discarding half the training data.
+   - **SLURM --mem flag critical:** Without explicit --mem, jobs request 1.9TB and never schedule. Now set in all .sh scripts.
+   - **Fresh v2 training queued:** `stage1_4h100_v2` with all fixes. Continuation script: `run_stage1_4h100_continue.sh`.
+   - **Old checkpoints preserved:** `stage1_4h100/` untouched; new ones → `stage1_4h100_v2/`.
+   - **Findings documented:** `MVV/Phase_3/Phase_3_4/FINDINGS.md`
+
 1. **✅ DONE (2026-04-01 session 18):** Phase 3.4 — DGX/H100 training fixes, resume support, H100 4-GPU scripts
-   - **DGX V100 (job 239379):** Stage 1 running; 4x V100 QLoRA nf4, LoRA r=32 α=64, lr_proj=1e-5, lr_lora=5e-6, batch=2/GPU, 3 epochs. Epoch 1 ~57% done, loss 0.27–0.59.
-   - **DGX continuation queued:** `run_stage1_4gpu_continue.sh` (dependency afterany:239379), resumes from `epoch_latest`, 2 more epochs → `checkpoints/stage1_4gpu_continued/`.
-   - **H100 4-GPU (job 239381):** Crashed due to dtype mismatch in ConvRoPEProjector.forward (fp16 input vs bfloat16 conv weights). Fix applied: `x = x.to(self.conv.weight.dtype)`. Scripts `run_stage1_4h100.sh` / `run_stage2_4h100.sh` (5 epochs, 24h limit) need resubmission.
-   - **Inference fixed:** `DGX_run/run_inference_stage1.py` now uses `PeftModel.from_pretrained` (was `get_peft_model + load_adapter` which failed silently).
-   - **Key training fixes applied:**
-     - `broadcast_buffers=False` added to DDP wraps (prevents allreduce on non-trainable buffers for QLoRA models)
-     - GradScaler: `init_scale=2**10` (lower init avoids early NaN overflow), `has_valid_grad` guard (skip scaler.step when no gradients produced)
-     - Manual grad sync (no DDP) in DGX variant — bitsandbytes 4-bit incompatible with DDP bucket management
-     - `--resume-from` arg added to DGX train_stage1.py (loads projector.pth + PeftModel.from_pretrained)
-     - Mid-epoch checkpoints every 500 optimizer steps to `epoch_step_{N}` and `epoch_latest`
-   - **New scripts:** `DGX_run/run_stage1_4gpu.sh`, `DGX_run/run_stage1_4gpu_continue.sh`, `DGX_run/run_inference_stage1.sh`, `run_stage1_4h100.sh`, `run_stage2_4h100.sh`
-   - **Checkpoint paths:** `MVV/Phase_3/Phase_3_4/DGX_run/checkpoints/stage1_4gpu/epoch_latest` (current), `stage1_4gpu_continued/` (after continuation), `checkpoints/stage1_4h100/` (H100, pending)
+   - **DGX V100 (job 239379):** Stage 1 running; 4x V100 QLoRA nf4, LoRA r=32 α=64, lr_proj=1e-5, lr_lola=5e-6, batch=2/GPU, 3 epochs.
+   - **H100 4-GPU (job 239381):** Crashed due to dtype mismatch. Fix applied: `x = x.to(self.conv.weight.dtype)`.
+   - **Key training fixes:** broadcast_buffers=False, GradScaler init_scale=2**10, has_valid_grad guard, manual grad sync (no DDP on DGX), --resume-from, mid-epoch checkpoints every 500 steps.
+   - **Inference fixed:** `run_inference_stage1.py` now uses `PeftModel.from_pretrained`.
 
 1. **✅ DONE (2026-03-13 session 12):** Phase 1.9a — ConvRoPEProjector + linear keyword probe, macro F1=0.780
    - **Architecture:** SigLIP [1024,1152] → Conv2d(stride=2) → [256,1152] → 2D RoPE → MLP → [256,2048] → LinearProbe → [256,16]

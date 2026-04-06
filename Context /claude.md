@@ -7,21 +7,22 @@
 
 ## Quick Status
 
-**Current Phase:** Phase 3.4 — Stage 1 (Lossless Decoder) training ACTIVE on DGX (job 239379); H100 4-GPU scripts ready, need resubmission
-**Last Updated:** 2026-04-01
+**Current Phase:** Phase 3.4 — Stage 1 v2 (prefix-only + scale fix) ready to submit on H100
+**Last Updated:** 2026-04-06
 
-- ✅ **DGX V100 Stage 1 running** — Job 239379 (4x V100, QLoRA nf4, LoRA r=32 α=64). Epoch 1 ~57% complete, loss 0.27–0.59. Continuation job queued (dependency=afterany:239379), will resume from `epoch_latest` for 2 more epochs.
-- ✅ **H100 4-GPU scripts created** — `run_stage1_4h100.sh`, `run_stage2_4h100.sh` (5 epochs, 24h, 4x H100). dtype fix applied (`x = x.to(self.conv.weight.dtype)` in ConvRoPEProjector.forward). Job 239381 crashed before fix — needs resubmission.
-- ✅ **DGX train_stage1.py overhauled** — `MVV/Phase_3/Phase_3_4/DGX_run/train_stage1.py`: manual grad-sync (no DDP), fp16 autocast, GradScaler(init_scale=2**10), has_valid_grad guard, --resume-from arg, mid-epoch checkpointing every 500 steps.
-- ✅ **Inference LoRA loading fixed** — `run_inference_stage1.py` now uses `PeftModel.from_pretrained` (replaces fragile get_peft_model + load_adapter).
-- ✅ **Reasoning dataset complete** — `MVV/Phase_3/Phase_3_4/reasoning_dataset.jsonl` (macro+micro Q&A pairs).
-- ✅ **Phase 3.3 inference** — 5.7% line overlap on smoke test sample (undertrained baseline).
+- ✅ **Teacher forcing root cause found** — 99.78% of tokens could be predicted from text context alone; model never learned to read vision tokens. Fix: prefix-only training (mask text in input_ids with pad tokens, force model to generate from vision only).
+- ✅ **21x embedding scale mismatch fixed** — Projector output std=1.64 vs LLM text embeddings std=0.08. Fix: LayerNorm + learnable `output_scale` (init=0.1) added to ConvRoPEProjector.
+- ✅ **Batch size 4→2 per GPU** — 50% OOM skip rate was discarding half the training data. Reduced to 2/GPU.
+- ✅ **SLURM --mem flag critical** — Without it, jobs request 1.9TB and never schedule. Now set in all scripts.
+- ✅ **Fresh v2 training queued** — `stage1_4h100_v2` with all fixes (prefix-only + LayerNorm + scale + batch_size=2). Continuation script ready at `run_stage1_4h100_continue.sh`.
+- ✅ **Old checkpoints preserved** — `stage1_4h100/` untouched; new checkpoints go to `stage1_4h100_v2/`.
+- ✅ **Findings documented** — `MVV/Phase_3/Phase_3_4/FINDINGS.md` (full analysis).
 
 **Next Steps:**
-1. Wait for DGX job 239379 + continuation to finish. Check `slurm-stage1-4gpu-*.out` for loss trends.
-2. Resubmit H100 Stage 1: `sbatch MVV/Phase_3/Phase_3_4/run_stage1_4h100.sh` (dtype fix now applied).
-3. Run inference on best checkpoint: `sbatch MVV/Phase_3/Phase_3_4/DGX_run/run_inference_stage1.sh`.
-4. Once Stage 1 converges (val_loss < 1.40), submit Stage 2 reasoning fine-tune.
+1. Submit fresh H100 Stage 1 v2 training with all fixes applied.
+2. Monitor loss curves — expect slower start but genuine vision-dependent learning.
+3. Run inference on best v2 checkpoint to verify improved reconstruction.
+4. Once Stage 1 v2 converges (val_loss < 1.40), submit Stage 2 reasoning fine-tune.
 
 ---
 
